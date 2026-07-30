@@ -17,9 +17,9 @@ Frontend: React (Vite)
 
 ## Cách chạy dự án
 
-1. `docker compose up -d` (khởi động PostgreSQL)
-2. `cd backend && npm install && npm run dev`
-3. `cd frontend && npm install && npm run dev`
+1. `cd database && docker compose up -d` (khởi động PostgreSQL + Adminer)
+2. `cd ../backend && npm install && npm run dev`
+3. `cd ../frontend && npm install && npm run dev`
 
 ## Tài liệu liên quan
 
