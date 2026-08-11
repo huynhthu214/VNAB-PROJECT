@@ -1,0 +1,307 @@
+{
+  "info": {
+    "_postman_id": "052cf535-d6c9-40c6-8182-b4a0cded5ab8",
+    "name": "VNAB API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "48142092",
+    "_collection_link": "https://go.postman.co/collection/48142092-052cf535-d6c9-40c6-8182-b4a0cded5ab8?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "provinces",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/provinces",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "provinces"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin Unit Keyword",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/admin-units?keyword=tan dinh",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "admin-units"
+          ],
+          "query": [
+            {
+              "key": "keyword",
+              "value": "tan dinh"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Search",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/admin-units/search?old_name=Bến Nghé",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "admin-units",
+            "search"
+          ],
+          "query": [
+            {
+              "key": "old_name",
+              "value": "Bến Nghé"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/admin-units/u0073",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "admin-units",
+            "u0073"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "QA",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"question\": \"Nghị quyết 1685/NQ-UBTVQH15 dựa trên đề án số bao nhiêu?\",\r\n  \"model\": \"naive_rag\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/qa/ask",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "qa",
+            "ask"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "QA1",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"question\":\"Phường Đa Kao cũ bây giờ thuộc phường nào?\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/qa/ask",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "qa",
+            "ask"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "QA2",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"question\": \"Nghị quyết 1685/NQ-UBTVQH15 quy định về việc sắp xếp đơn vị hành chính cấp xã của Thành phố Hồ Chí Minh dựa trên đề án nào?\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/qa/ask",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "qa",
+            "ask"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Tỉnh cũ",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/provinces/search?old_name=Bình Dương",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "provinces",
+            "search"
+          ],
+          "query": [
+            {
+              "key": "old_name",
+              "value": "Bình Dương"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Chi tiết tỉnh",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/provinces/province_0001",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "provinces",
+            "province_0001"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Xem dữ liệu văn bản",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/documents/1685%2FNQ-UBTVQH15",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "documents",
+            "1685%2FNQ-UBTVQH15"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Feedback",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"qa_log_id\": 26, \"is_helpful\": true, \"note\": \"Trả lời đúng\" }",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/feedback",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "feedback"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": ""
+    }
+  ]
+}

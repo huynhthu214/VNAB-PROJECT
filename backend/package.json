@@ -12,10 +12,15 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.19.0",
+    "cohere-ai": "^8.0.0",
     "cors": "^2.8.6",
+    "csv-parse": "^7.0.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "eslint": "^10.8.0",

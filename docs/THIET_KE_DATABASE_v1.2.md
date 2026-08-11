@@ -82,13 +82,19 @@ CREATE TABLE unit_mapping (
   old_unit_id           INTEGER NOT NULL REFERENCES admin_units_old(id),
   new_unit_id           INTEGER NOT NULL REFERENCES admin_units_new(id),
   decision_document_id  INTEGER REFERENCES legal_documents(id),
+  merge_type                VARCHAR(10) NOT NULL DEFAULT 'toan_bo',  -- 'toan_bo' | 'mot_phan' (mới thêm v1.2)
   notes                 TEXT,
-  UNIQUE (old_unit_id, new_unit_id)
+  UNIQUE (old_unit_id, new_unit_id),
+  CONSTRAINT chk_merge_type CHECK (merge_type IN ('toan_bo', 'mot_phan'))
 );
-CREATE INDEX idx_mapping_old  ON unit_mapping(old_unit_id);
-CREATE INDEX idx_mapping_new  ON unit_mapping(new_unit_id);
+CREATE INDEX idx_mapping_old     ON unit_mapping(old_unit_id);
+CREATE INDEX idx_mapping_new     ON unit_mapping(new_unit_id);
+CREATE INDEX idx_mapping_merge_type  ON unit_mapping(merge_type);
 ```
 > 1 đơn vị mới có thể gộp từ **nhiều** đơn vị cũ → quan hệ nhiều-nhiều được thể hiện qua bảng trung gian này (1 `new_unit_id` xuất hiện nhiều dòng, mỗi dòng ứng với 1 `old_unit_id`).
+>
+> **Cột `merge_type` (mới, bắt buộc — v1.2):** phân biệt đơn vị cũ được sáp nhập **toàn bộ** hay chỉ **một phần** diện tích/dân số vào đơn vị mới. Đây là trường hợp thực tế xảy ra khá nhiều trong Nghị quyết 1685 (VD: phường Đa Kao (cũ) bị chia — một phần vào phường Sài Gòn, một phần vào phường Tân Định). Nếu bỏ qua cột này, hệ thống hỏi-đáp sẽ trả lời sai kiểu "X (cũ) nay là Y" trong khi thực tế X bị chia làm nhiều nơi.
+> Không lưu tỉ lệ % chính xác (VD "60% diện tích") vì cần dữ liệu bản đồ GIS chi tiết — nằm ngoài phạm vi đồ án theo đúng nguyên tắc "đúng thực lực sinh viên năm 4".
 
 ### 2.6 Bảng `document_chunks` — dữ liệu vector cho RAG
 ```sql
@@ -127,23 +133,25 @@ CREATE TABLE qa_logs (
 
 ## 3. Các truy vấn mẫu quan trọng
 
-### 3.1 Tra cứu trực tiếp: tên cũ → tên mới
+### 3.1 Tra cứu trực tiếp: tên cũ → tên mới (LƯU Ý: 1 đơn vị cũ có thể trả về NHIỀU dòng nếu bị chia)
 ```sql
-SELECT n.code, n.name AS new_name, d.title AS decision, d.source_url
+SELECT n.code, n.name AS new_name, m.merge_type, d.title AS decision, d.source_url
 FROM admin_units_old o
 JOIN unit_mapping m       ON m.old_unit_id = o.id
 JOIN admin_units_new n    ON n.id = m.new_unit_id
 LEFT JOIN legal_documents d ON d.id = m.decision_document_id
 WHERE o.name ILIKE '%Bến Nghé%';
 ```
+> **Quan trọng khi code phía backend:** đây là truy vấn có thể trả về **nhiều hơn 1 dòng** (VD tra "Đa Kao" sẽ ra 2 dòng: phường Sài Gòn + phường Tân Định, cả hai đều `merge_type = 'mot_phan'`). Code sinh câu trả lời **bắt buộc kiểm tra `COUNT(*) > 1`** để dùng đúng mẫu câu "được chia làm X phần...", không được mặc định lấy dòng đầu tiên rồi trả lời như nhập trọn vào 1 nơi — đây là lỗi dễ gặp nhất nếu code ẩu.
 
-### 3.2 Liệt kê tất cả đơn vị cũ đã gộp vào 1 đơn vị mới
+### 3.2 Liệt kê tất cả đơn vị cũ đã gộp vào 1 đơn vị mới (kèm mức độ)
 ```sql
-SELECT o.name AS old_name, o.parent_name, o.province_old
+SELECT o.name AS old_name, o.parent_name, o.province_old, m.merge_type
 FROM unit_mapping m
 JOIN admin_units_old o ON o.id = m.old_unit_id
 WHERE m.new_unit_id = (SELECT id FROM admin_units_new WHERE code = 'unit_0007');
 ```
+> Dùng để sinh câu trả lời kiểu "Phường X được hình thành từ toàn bộ phường A, cộng một phần phường B và phường C" — phân loại theo `merge_type` ngay trong vòng lặp code, không gộp chung tất cả thành "được sáp nhập từ A, B, C" (nói vậy là sai với thực tế pháp lý nếu B, C chỉ góp một phần).
 
 ### 3.3 Semantic search (RAG retrieval) — top-5 đoạn liên quan nhất
 ```sql
@@ -236,6 +244,24 @@ seeds/
 pg_dump -Fc done_team_db > backup_$(date +%Y%m%d).dump
 ```
 Nên backup định kỳ trước mỗi lần nạp dữ liệu hàng loạt, để lỡ nạp sai có thể phục hồi nhanh — quan trọng khi gần deadline.
+
+---
+
+## 6. Migration bổ sung: cột `merge_type` (v1.2 — thêm sau khi phát hiện trường hợp sáp nhập một phần)
+
+### 6.1 Vì sao cần migration này
+Khi rà soát dữ liệu, phát hiện Nghị quyết 1685 có nhiều trường hợp 1 đơn vị cũ **không nhập trọn** vào 1 đơn vị mới mà bị **chia một phần** vào 2 đơn vị mới khác nhau (VD: phường Đa Kao cũ → một phần vào phường Sài Gòn, một phần vào phường Tân Định). Ước tính có khoảng 46-48 dòng thuộc loại này trong tổng số ~440 dòng ánh xạ cấp xã/phường.
+
+### 6.2 Các bước chạy migration
+1. Tạo file migration mới theo đúng convention đã có: `migrations/20260803b_add_merge_type_unit_mapping.js` (đặt sau file tạo bảng `unit_mapping`).
+2. Copy nội dung SQL từ file `migration_add_merge_type.sql` (đính kèm cùng bộ tài liệu này) vào phần `up()` của file migration.
+3. Chạy `npx knex migrate:latest` trên cả 2 máy (A và B) để đồng bộ schema — **không tự ý chạy ALTER TABLE tay trên 1 máy rồi quên báo người còn lại**, dễ gây lệch schema giữa 2 người như cảnh báo ở mục 5.
+4. Sau khi migrate xong, các dòng dữ liệu **đã import trước đó** sẽ tự nhận `merge_type = 'toan_bo'` (giá trị mặc định) — cần chạy lại bước nạp dữ liệu (UPDATE) cho đúng ~46-48 dòng thực tế là "một phần", lấy theo file Excel rà soát đã đánh dấu cột `merge_type`.
+5. Kiểm tra lại bằng câu lệnh: `SELECT merge_type, COUNT(*) FROM unit_mapping GROUP BY merge_type;` — đối chiếu con số với Dashboard trong file Excel rà soát.
+
+### 6.3 Ảnh hưởng tới API (xem chi tiết ở API_DOC.md mục 2.5, 2.7)
+- `GET /admin-units/{id}`: field `old_units[].merge_type` mới được thêm.
+- `POST /qa/ask`: câu trả lời phải phân biệt "toàn bộ" / "một phần" khi liệt kê nguồn gốc 1 đơn vị mới, và phải liệt kê đủ **tất cả** đơn vị mới khi 1 đơn vị cũ bị chia (không chỉ trả về 1 kết quả).
 
 ---
 

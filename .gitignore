@@ -15,4 +15,7 @@ build/
 Thumbs.db
 
 # DB
-*.dump  
+*.dum
+
+data/*.xlsx
+node_modules/  
