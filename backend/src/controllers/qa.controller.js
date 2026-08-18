@@ -4,7 +4,7 @@ const axios = require("axios");
 const {
   callLLM,
   ServiceUnavailableError,
-  isConnectionError,
+  RateLimitError,
 } = require("../services/llmProviders");
 
 function extractKhoan(notes) {
@@ -71,7 +71,8 @@ async function logQa(
 
 async function tryOldUnitMatch(question) {
   const { rows } = await pool.query(
-    `SELECT o.name AS old_name, n.name AS new_name, m.merge_type,
+    `SELECT o.id AS old_id, o.name AS old_name, o.parent_name, o.province_old,
+            n.name AS new_name, m.merge_type,
             d.doc_code, d.title AS doc_title, d.source_url, m.notes
      FROM admin_units_old o
      JOIN unit_mapping m ON m.old_unit_id = o.id
@@ -84,8 +85,45 @@ async function tryOldUnitMatch(question) {
   if (rows.length === 0) return null;
 
   const bestOldName = rows[0].old_name;
-  const matched = rows.filter((r) => r.old_name === bestOldName);
+  let sameNameRows = rows.filter((r) => r.old_name === bestOldName);
+  let distinctOldIds = [...new Set(sameNameRows.map((r) => r.old_id))];
 
+  // Nếu trùng tên nhiều nơi -> thử lọc thêm theo tên quận/huyện NẾU câu hỏi có nhắc tới
+  if (distinctOldIds.length > 1) {
+    const questionLower = question.toLowerCase();
+    const filteredByParent = sameNameRows.filter(
+      (r) =>
+        r.parent_name && questionLower.includes(r.parent_name.toLowerCase()),
+    );
+    const filteredDistinctIds = [
+      ...new Set(filteredByParent.map((r) => r.old_id)),
+    ];
+
+    // Chỉ áp dụng nếu lọc ra được ĐÚNG 1 đơn vị duy nhất - tránh lọc nhầm còn 2+ vẫn mơ hồ
+    if (filteredDistinctIds.length === 1) {
+      sameNameRows = filteredByParent;
+      distinctOldIds = filteredDistinctIds;
+    }
+  }
+
+  // Sau khi thử lọc, vẫn còn nhiều đơn vị khác nhau trùng tên -> thật sự mơ hồ, hỏi lại
+  if (distinctOldIds.length > 1) {
+    const options = distinctOldIds.map((id) => {
+      const r = sameNameRows.find((x) => x.old_id === id);
+      return `${r.old_name} thuộc ${r.parent_name}, ${r.province_old}`;
+    });
+    return {
+      answer: `Có nhiều đơn vị hành chính cùng tên "${bestOldName}" ở các khu vực khác nhau: ${options.join("; ")}. Vui lòng cho biết cụ thể thuộc quận/huyện nào để tra cứu chính xác.`,
+      answer_type: "structured_lookup",
+      answer_level: "unit",
+      model_used: "rule_based",
+      confidence: 0.6,
+      sources: [],
+    };
+  }
+
+  // Đã xác định được đúng 1 đơn vị (từ đầu hoặc nhờ lọc theo quận) -> trả lời bình thường
+  const matched = sameNameRows;
   let answer;
   if (matched.length === 1) {
     const r = matched[0];
@@ -173,7 +211,13 @@ async function tryOldProvinceMatch(question) {
 
 // ============ MODEL 2: NAIVE RAG (vector-only) ============
 
-const SCOPE_KEYWORDS = ["Hồ Chí Minh", "Bình Dương", "Bà Rịa", "Vũng Tàu"];
+const SCOPE_KEYWORDS = [
+  "Hồ Chí Minh",
+  "TP.HCM",
+  "Bình Dương",
+  "Bà Rịa",
+  "Vũng Tàu",
+];
 
 async function tryVectorSearch(question, provider = "gemini") {
   const embedding = await getEmbedding(question);
@@ -207,8 +251,14 @@ Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, P
 ${context}`;
 
   const llmAnswer = await callLLM(provider, systemPrompt, question);
+  if (!llmAnswer || typeof llmAnswer !== "string") {
+    console.error(
+      `Provider ${provider} trả về giá trị không hợp lệ:`,
+      llmAnswer,
+    );
+    return null; // rơi xuống NO_ANSWER_FOUND thay vì crash
+  }
   if (llmAnswer.trim() === "KHONG_CO_DU_LIEU") return null;
-
   const uniqueSources = [
     ...new Map(
       relevant.map((r) => [
@@ -362,7 +412,12 @@ ${context}`;
 async function ask(req, res) {
   try {
     const { question, session_id, llm_provider, model } = req.body;
-    const provider = ["gemini", "groq", "cohere"].includes(llm_provider)
+    const provider = [
+      "gemini",
+      "deepseek",
+      "cohere",
+      "gemini_reasoning",
+    ].includes(llm_provider)
       ? llm_provider
       : "gemini";
     const selectedModel = ["rule_based", "naive_rag", "modular_rag"].includes(
@@ -448,6 +503,16 @@ async function ask(req, res) {
     });
   } catch (err) {
     console.error(err);
+    if (err instanceof RateLimitError) {
+      return res
+        .status(429)
+        .json(
+          fail(
+            "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút.",
+            "RATE_LIMITED",
+          ),
+        );
+    }
     if (err instanceof ServiceUnavailableError) {
       return res
         .status(503)
