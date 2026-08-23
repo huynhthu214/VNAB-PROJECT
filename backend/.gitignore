@@ -1,0 +1,10 @@
+node_modules/
+.env
+
+# File tạm sinh trong lúc chạy batch test (checkpoint trung gian, không phải kết quả cuối)
+data/batch_results/_temp_*
+
+# Kết quả batch test theo từng lượt chạy - có timestamp riêng, dễ tích lũy rất nhiều
+# Bỏ dòng dưới nếu muốn giữ lại tất cả lịch sử chạy; mặc định chỉ giữ timing_summary.xlsx
+# (là bảng tổng hợp cộng dồn, đã đủ dùng cho báo cáo) và bỏ qua các results_*.xlsx lẻ.
+data/batch_results/results_*.xlsx

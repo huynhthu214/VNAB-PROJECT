@@ -83,8 +83,10 @@ CREATE TABLE IF NOT EXISTS admin_units_old (
                     CHECK (unit_type IN ('phuong', 'xa', 'thi_tran', 'huyen')),
                     -- 'huyen' chỉ dùng cho case đặc biệt: huyện Côn Đảo -> đặc khu thẳng, không qua cấp xã
   parent_name      VARCHAR(150),                           -- VD: "Quận 1" (tên quận/huyện cũ, dạng text tự do)
-  province_old     VARCHAR(100) NOT NULL
-                    CHECK (province_old IN ('TP.HCM (cũ)', 'Bình Dương (cũ)', 'Bà Rịa - Vũng Tàu (cũ)')),
+  province_old     VARCHAR(100) NOT NULL,                  -- nhãn hiển thị dạng text, VD "Tỉnh An Giang (cũ)"
+                                                            -- KHÔNG còn CHECK giới hạn danh sách tỉnh (xem mục 8.1)
+                                                            -- vì hệ thống đã mở rộng ra nhiều tỉnh/thành; toàn vẹn
+                                                            -- dữ liệu được đảm bảo qua khóa ngoại province_old_id bên dưới
   province_old_id  INTEGER REFERENCES provinces_old(id),   -- khóa ngoại chuẩn, dùng để JOIN
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (name, parent_name, province_old)
@@ -195,6 +197,14 @@ ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS content_tsv tsvector
 CREATE INDEX IF NOT EXISTS idx_chunks_content_tsv ON document_chunks USING gin (content_tsv);
 
 ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS routing_decision VARCHAR(20);
+
+-- ============================================================================
+-- 9. MIGRATION v1.2 — mở rộng đa tỉnh: bỏ CHECK constraint chỉ giới hạn
+--    3 tỉnh cũ của TP.HCM trên cột admin_units_old.province_old.
+--    BẮT BUỘC chạy đoạn này trên database ĐANG CHẠY (đã có dữ liệu TP.HCM)
+--    trước khi nạp dữ liệu tỉnh khác, nếu không sẽ bị từ chối toàn bộ dòng mới.
+-- ============================================================================
+ALTER TABLE admin_units_old DROP CONSTRAINT IF EXISTS admin_units_old_province_old_check;
 -- ============================================================================
 -- HẾT FILE — kiểm tra nhanh sau khi chạy:
 --   SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
