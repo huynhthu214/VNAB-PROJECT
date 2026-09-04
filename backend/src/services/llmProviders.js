@@ -11,12 +11,18 @@ class ServiceUnavailableError extends Error {
 }
 
 function isConnectionError(err) {
+  const causeCode = err.cause?.code;
   return (
     err.code === "ECONNREFUSED" ||
     err.code === "ETIMEDOUT" ||
-    err.code === "ENOTFOUND" ||
+    err.code === "ECONNABORTED" || // ← THÊM — axios timeout
     err.status >= 500 ||
-    err.response?.status >= 500
+    err.response?.status >= 500 ||
+    err.message === "fetch failed" ||
+    (err.message && err.message.includes("timeout")) || // ← THÊM — bắt cả câu "timeout of Nms exceeded"
+    causeCode === "ECONNREFUSED" ||
+    causeCode === "ETIMEDOUT" ||
+    causeCode === "ENOTFOUND"
   );
 }
 
@@ -35,6 +41,9 @@ async function callGemini(systemPrompt, question) {
   const model = genAI.getGenerativeModel({
     model: "gemini-3.5-flash-lite",
     systemInstruction: systemPrompt,
+    generationConfig: {
+      thinkingConfig: { thinkingLevel: "medium" }, // bật suy luận vừa phải, không cần "high" để tiết kiệm token/thời gian
+    },
   });
   const result = await model.generateContent(question);
   return result.response.text();
@@ -95,7 +104,7 @@ const PROVIDERS = {
   gemini: callGemini,
   cohere: callCohere,
   openrouter: callOpenRouter,
-  gemini_reasoning: callGeminiReasoning,
+  // gemini_reasoning: callGeminiReasoning,
 };
 
 async function callLLM(providerName, systemPrompt, question) {
@@ -151,6 +160,7 @@ async function callLLMWithFallback(
 
 module.exports = {
   callLLM,
+  PROVIDERS,
   ServiceUnavailableError,
   RateLimitError,
   isConnectionError,

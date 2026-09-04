@@ -6,13 +6,10 @@ const XLSX = require("xlsx");
 
 // ============ CẤU HÌNH — ĐỔI 2 DÒNG NÀY GIỮA CÁC LƯỢT CHẠY ============
 const LLM_PROVIDER = "gemini";
-const MODELS_TO_RUN = ["rule_based", "naive_rag", "modular_rag"];
+const MODELS_TO_RUN = ["advanced_rag"];
+const TEST_SET_PATH = path.join(__dirname, "../data/pilot_test_set.xlsx");
 
 const API_BASE_URL = "http://localhost:3000/api/v1";
-const TEST_SET_PATH = path.join(
-  __dirname,
-  "../data/test_set_ground_truth.xlsx",
-);
 const RESULTS_DIR = path.join(__dirname, "../data/batch_results");
 const SUMMARY_PATH = path.join(RESULTS_DIR, "timing_summary.xlsx");
 
@@ -62,7 +59,7 @@ async function callAskApi(question, model, provider, isRetry = false) {
     const res = await axios.post(
       `${API_BASE_URL}/qa/ask`,
       { question, model, llm_provider: provider },
-      { timeout: 30000 },
+      { timeout: 60000 },
     );
     return {
       success: true,
@@ -236,7 +233,30 @@ function appendSummaryRows(newRows) {
 }
 
 // ============ MAIN ============
+async function warmUp() {
+  console.log("Đang warm-up model (embedding + rerank)...");
+  try {
+    await axios.post(
+      `${API_BASE_URL}/qa/ask`,
+      {
+        question: "Phường Bến Nghé cũ giờ là gì?",
+        model: "advanced_rag",
+        llm_provider: "gemini", // dùng provider bất kỳ, chỉ để load model vào RAM
+      },
+      { timeout: 90000 },
+    ); // timeout dài vì lần đầu luôn chậm nhất (cold start)
+  } catch (err) {
+    console.log(
+      "Warm-up xong (có thể lỗi nhẹ, không sao, mục đích chỉ để load model):",
+      err.message,
+    );
+  }
+  console.log("Warm-up hoàn tất. Đợi 5 giây trước khi bắt đầu batch thật...");
+  await new Promise((r) => setTimeout(r, 5000));
+}
+
 async function run() {
+  await warmUp();
   if (!fs.existsSync(TEST_SET_PATH)) {
     console.error(`Không tìm thấy file: ${TEST_SET_PATH}`);
     process.exit(1);
@@ -273,7 +293,21 @@ async function run() {
       await sleep(DELAY_BETWEEN_MODELS_MS);
     }
   }
-
+  // Thêm trước dòng appendSummaryRows(allStats);
+  const backupPath = path.join(
+    RESULTS_DIR,
+    `_summary_backup_${timestamp}.xlsx`,
+  );
+  try {
+    if (fs.existsSync(SUMMARY_PATH)) {
+      fs.copyFileSync(SUMMARY_PATH, backupPath);
+    }
+  } catch (err) {
+    console.warn(
+      "Không backup được timing_summary.xlsx (bỏ qua):",
+      err.message,
+    );
+  }
   appendSummaryRows(allStats);
 
   const totalElapsedSec = ((Date.now() - runStartedAt) / 1000).toFixed(1);
