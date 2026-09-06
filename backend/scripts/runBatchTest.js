@@ -59,7 +59,7 @@ async function callAskApi(question, model, provider, isRetry = false) {
     const res = await axios.post(
       `${API_BASE_URL}/qa/ask`,
       { question, model, llm_provider: provider },
-      { timeout: 60000 },
+      { timeout: 120000 },
     );
     return {
       success: true,
@@ -241,9 +241,10 @@ async function warmUp() {
       {
         question: "Phường Bến Nghé cũ giờ là gì?",
         model: "advanced_rag",
-        llm_provider: "gemini", // dùng provider bất kỳ, chỉ để load model vào RAM
+        llm_provider: "gemini",
+        province_id: 1, // dùng provider bất kỳ, chỉ để load model vào RAM
       },
-      { timeout: 90000 },
+      { timeout: 120000 },
     ); // timeout dài vì lần đầu luôn chậm nhất (cold start)
   } catch (err) {
     console.log(

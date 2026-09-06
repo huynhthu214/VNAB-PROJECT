@@ -28,7 +28,7 @@ async function getEmbedding(text) {
     const res = await axios.post(
       "http://localhost:8001/embed",
       { text },
-      { timeout: 15000 },
+      { timeout: 30000 },
     );
     return res.data.embedding;
   } catch (err) {
@@ -57,7 +57,7 @@ async function rerankChunks(question, chunks, topK = 5) {
         query: question,
         documents: chunks.map((c) => c.content),
       },
-      { timeout: 40000 },
+      { timeout: 90000 },
     );
     const { scores } = res.data;
     return chunks
@@ -112,14 +112,16 @@ async function logQa(
 }
 // ============ MODEL 1: RULE-BASED (structured lookup) ============
 
-async function tryOldUnitMatch(question) {
+async function tryOldUnitMatch(question, provinceId = null) {
   const { rows } = await pool.query(
     `SELECT o.id AS old_id, o.name AS old_name, o.parent_name, o.province_old,
-            n.name AS new_name, m.merge_type,
+            n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
+            m.merge_type,
             d.doc_code, d.title AS doc_title, d.source_url, m.notes
      FROM admin_units_old o
      JOIN unit_mapping m ON m.old_unit_id = o.id
      JOIN admin_units_new n ON n.id = m.new_unit_id
+     JOIN provinces_new pn ON pn.id = n.province_new_id
      LEFT JOIN legal_documents d ON d.id = m.decision_document_id
      WHERE $1 ILIKE '%' || o.name || '%'
      ORDER BY length(o.name) DESC`,
@@ -129,9 +131,37 @@ async function tryOldUnitMatch(question) {
 
   const bestOldName = rows[0].old_name;
   let sameNameRows = rows.filter((r) => r.old_name === bestOldName);
+
+  // ====== MỚI: lọc theo tab tỉnh đang chọn (nếu có) ======
+  // Vì tên đơn vị hành chính trùng nhau rất phổ biến giữa các tỉnh (VD "Phường 16"
+  // tồn tại ở nhiều quận khác nhau), phải thu hẹp về đúng phạm vi tab trước khi
+  // xét tiếp logic mơ hồ theo quận/huyện bên dưới - tránh trộn lẫn dữ liệu khác tỉnh.
+  if (provinceId) {
+    const inScope = sameNameRows.filter(
+      (r) => r.province_new_id === provinceId,
+    );
+    if (inScope.length === 0) {
+      const otherProvinces = [
+        ...new Set(sameNameRows.map((r) => r.new_province_name)),
+      ];
+      return {
+        answer: `Không tìm thấy "${bestOldName}" trong phạm vi tỉnh/thành đang chọn. Có đơn vị cùng tên thuộc: ${otherProvinces.join(", ")}. Vui lòng chuyển sang tab tương ứng để tra cứu.`,
+        answer_type: "structured_lookup",
+        answer_level: "unit",
+        model_used: "rule_based",
+        confidence: 0.5,
+        sources: [],
+        suggested_provinces: [
+          ...new Set(sameNameRows.map((r) => r.province_new_id)),
+        ],
+      };
+    }
+    sameNameRows = inScope;
+  }
+
   let distinctOldIds = [...new Set(sameNameRows.map((r) => r.old_id))];
 
-  // Nếu trùng tên nhiều nơi -> thử lọc thêm theo tên quận/huyện NẾU câu hỏi có nhắc tới
+  // Nếu trùng tên nhiều nơi (trong CÙNG tab, hoặc không chọn tab) -> thử lọc thêm theo tên quận/huyện NẾU câu hỏi có nhắc tới
   if (distinctOldIds.length > 1) {
     const questionLower = question.toLowerCase();
     const filteredByParent = sameNameRows.filter(
@@ -186,11 +216,13 @@ async function tryOldUnitMatch(question) {
   };
 }
 
-async function tryNewUnitMatch(question) {
+async function tryNewUnitMatch(question, provinceId = null) {
   const { rows } = await pool.query(
-    `SELECT n.name AS new_name, o.name AS old_name, o.parent_name, m.merge_type,
+    `SELECT n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
+            o.name AS old_name, o.parent_name, m.merge_type,
             d.doc_code, d.title AS doc_title, d.source_url, m.notes
      FROM admin_units_new n
+     JOIN provinces_new pn ON pn.id = n.province_new_id
      JOIN unit_mapping m ON m.new_unit_id = n.id
      JOIN admin_units_old o ON o.id = m.old_unit_id
      LEFT JOIN legal_documents d ON d.id = m.decision_document_id
@@ -201,7 +233,50 @@ async function tryNewUnitMatch(question) {
   if (rows.length === 0) return null;
 
   const bestNewName = rows[0].new_name;
-  const matched = rows.filter((r) => r.new_name === bestNewName);
+  let matched = rows.filter((r) => r.new_name === bestNewName);
+
+  // ====== MỚI: lọc theo tab tỉnh, hoặc phát hiện trùng tên đa tỉnh ======
+  // Đây là chỗ từng gây lỗi nghiêm trọng: tên đơn vị mới trùng nhau giữa các
+  // tỉnh (VD "Phường Bình Tân" tồn tại ở cả TP.HCM lẫn tỉnh khác) trước đây bị
+  // gộp chung thành 1 câu trả lời sai. Giờ tách rõ theo từng tỉnh trước khi trả lời.
+  if (provinceId) {
+    const inScope = matched.filter((r) => r.province_new_id === provinceId);
+    if (inScope.length === 0) {
+      const otherProvinces = [
+        ...new Set(matched.map((r) => r.new_province_name)),
+      ];
+      return {
+        answer: `Không tìm thấy "${bestNewName}" trong phạm vi tỉnh/thành đang chọn. Có đơn vị cùng tên thuộc: ${otherProvinces.join(", ")}. Vui lòng chuyển sang tab tương ứng để tra cứu.`,
+        answer_type: "structured_lookup",
+        answer_level: "unit",
+        model_used: "rule_based",
+        confidence: 0.5,
+        sources: [],
+        suggested_provinces: [
+          ...new Set(matched.map((r) => r.province_new_id)),
+        ],
+      };
+    }
+    matched = inScope;
+  } else {
+    const distinctProvinces = [
+      ...new Set(matched.map((r) => r.province_new_id)),
+    ];
+    if (distinctProvinces.length > 1) {
+      const options = distinctProvinces.map(
+        (pid) =>
+          matched.find((x) => x.province_new_id === pid).new_province_name,
+      );
+      return {
+        answer: `Có nhiều đơn vị hành chính cùng tên "${bestNewName}" ở các tỉnh/thành khác nhau: ${options.join(", ")}. Vui lòng chọn tab tỉnh tương ứng để tra cứu chính xác.`,
+        answer_type: "structured_lookup",
+        answer_level: "unit",
+        model_used: "rule_based",
+        confidence: 0.6,
+        sources: [],
+      };
+    }
+  }
 
   const toanBo = matched
     .filter((r) => r.merge_type === "toan_bo")
@@ -277,27 +352,24 @@ const SCOPE_KEYWORDS = [
   "Bạc Liêu",
 ];
 
+// ============ MODEL 2: NAIVE RAG (vector-only) ============
+
 async function tryVectorSearch(question, provider = "gemini") {
   const embedding = await getEmbedding(question);
   const vectorLiteral = `[${embedding.join(",")}]`;
 
-  const scopeFilter = SCOPE_KEYWORDS.map(
-    (_, i) => `c.content ILIKE $${i + 2}`,
-  ).join(" OR ");
-  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
-
+  // Bỏ ràng buộc SCOPE_KEYWORDS cứng nhắc ở mức SQL, để vector search tập trung vào độ tương đồng ngữ nghĩa
   const { rows } = await pool.query(
-    `SELECT c.content, d.doc_code, d.title, d.source_url,
+    `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
             1 - (c.embedding <=> $1) AS similarity
      FROM document_chunks c
      JOIN legal_documents d ON d.id = c.document_id
-     WHERE (${scopeFilter})
      ORDER BY c.embedding <=> $1
      LIMIT 5`,
-    [vectorLiteral, ...scopeParams],
+    [vectorLiteral],
   );
 
-  const relevant = rows.filter((r) => r.similarity > 0.5);
+  const relevant = rows.filter((r) => r.similarity > 0.4); // Giảm nhẹ ngưỡng similarity xuống 0.4 để an toàn
   if (relevant.length === 0) return null;
 
   const context = relevant.map((r) => r.content).join("\n---\n");
@@ -316,17 +388,18 @@ ${context}`;
       `Provider ${provider} trả về giá trị không hợp lệ:`,
       llmAnswer,
     );
-    return null; // rơi xuống NO_ANSWER_FOUND thay vì crash
+    return null;
   }
   if (llmAnswer.trim() === "KHONG_CO_DU_LIEU") return null;
+
   const uniqueSources = [
     ...new Map(
       relevant.map((r) => [
-        r.doc_code + (r.section_label || ""), // key phải gồm cả section, tránh gộp nhầm 2 khoản khác nhau cùng 1 văn bản
+        r.doc_code + (r.section_label || ""),
         {
           document_id: r.doc_code,
           title: r.title,
-          section: r.section_label || null, // ← thêm dòng này
+          section: r.section_label || null,
           source_url: r.source_url,
         },
       ]),
@@ -343,42 +416,57 @@ ${context}`;
     sources: uniqueSources,
   };
 }
+
 // ============ MODEL 3: ADVANCED RAG (query rewriting + rerank) ============
 
-async function vectorSearchTopN(question, topN = 10) {
+async function vectorSearchTopN(question, topN = 10, provinceId = null) {
   const embedding = await getEmbedding(question);
   const vectorLiteral = `[${embedding.join(",")}]`;
 
-  const scopeFilter = SCOPE_KEYWORDS.map(
-    (_, i) => `c.content ILIKE $${i + 2}`,
-  ).join(" OR ");
-  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
-  console.log("DEBUG scopeParams:", scopeParams); // ← THÊM
-  console.log("DEBUG question dùng để search:", question);
-  console.log("DEBUG scopeParams.length + 2 =", scopeParams.length + 2); // ← THÊM TẠM
+  // Nếu có chọn tab tỉnh: LỌC CHẶT, không cho chunk NULL lọt qua.
+  // Lý do: các chunk "thô" tách từ văn bản gốc (chunkDocuments.js) chưa được
+  // gán province_new_id (luôn NULL) vì 1 văn bản có thể liệt kê sáp nhập của
+  // nhiều tỉnh cùng lúc -> nếu cho NULL lọt qua sẽ lại bị trộn dữ liệu toàn quốc
+  // y như lỗi cũ. Chỉ khi lọc chặt mà KHÔNG ra kết quả nào mới nới lỏng ra tìm
+  // toàn bộ (kèm cảnh báo answer có thể ngoài phạm vi tab).
+  if (provinceId) {
+    const scoped = await pool.query(
+      `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
+              1 - (c.embedding <=> $1) AS similarity
+       FROM document_chunks c
+       JOIN legal_documents d ON d.id = c.document_id
+       WHERE c.province_new_id = $3
+       ORDER BY c.embedding <=> $1
+       LIMIT $2`,
+      [vectorLiteral, topN, provinceId],
+    );
+    if (scoped.rows.length > 0) return scoped.rows;
+    // Không có chunk nào được gán đúng tab này -> rơi xuống tìm không giới hạn bên dưới
+  }
 
   const { rows } = await pool.query(
     `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
             1 - (c.embedding <=> $1) AS similarity
      FROM document_chunks c
      JOIN legal_documents d ON d.id = c.document_id
-     WHERE (${scopeFilter})
      ORDER BY c.embedding <=> $1
-     LIMIT $${scopeParams.length + 2}`,
-    [vectorLiteral, ...scopeParams, topN],
+     LIMIT $2`,
+    [vectorLiteral, topN],
   );
-
-  console.log("DEBUG vectorSearchTopN rows.length =", rows.length); // ← THÊM TẠM
 
   return rows;
 }
 
 const RERANK_THRESHOLD = -100;
 
-async function tryAdvancedRAG(question, provider = "gemini") {
+async function tryAdvancedRAG(
+  question,
+  provider = "gemini",
+  provinceId = null,
+) {
   const rewrittenQuestion = await rewriteQuestion(question, provider);
 
-  const topN = await vectorSearchTopN(rewrittenQuestion, 10);
+  const topN = await vectorSearchTopN(rewrittenQuestion, 20, provinceId);
   if (topN.length === 0) {
     return {
       no_answer: true,
@@ -388,7 +476,7 @@ async function tryAdvancedRAG(question, provider = "gemini") {
     };
   }
 
-  const reranked = await rerankChunks(rewrittenQuestion, topN, 8);
+  const reranked = await rerankChunks(rewrittenQuestion, topN, 12);
   if (!reranked[0] || reranked[0].rerank_score < RERANK_THRESHOLD) {
     return {
       no_answer: true,
@@ -396,7 +484,6 @@ async function tryAdvancedRAG(question, provider = "gemini") {
       rewritten_question: rewrittenQuestion,
       rerank_top_score: reranked[0]?.rerank_score ?? null,
     };
-    s;
   }
 
   const context = reranked.map((c) => c.content).join("\n---\n");
@@ -517,10 +604,10 @@ async function tryHybridRetrieval(question) {
   return reciprocalRankFusion(vectorResults, keywordResults).slice(0, 5);
 }
 
-async function tryModularRAG(question, provider = "gemini") {
+async function tryModularRAG(question, provider = "gemini", provinceId = null) {
   const structuredResult =
-    (await tryOldUnitMatch(question)) ||
-    (await tryNewUnitMatch(question)) ||
+    (await tryOldUnitMatch(question, provinceId)) ||
+    (await tryNewUnitMatch(question, provinceId)) ||
     (await tryOldProvinceMatch(question));
 
   if (structuredResult) {
@@ -576,7 +663,7 @@ ${context}`;
 
 async function ask(req, res) {
   try {
-    const { question, session_id, llm_provider, model } = req.body;
+    const { question, session_id, llm_provider, model, province_id } = req.body;
 
     const VALID_PROVIDERS = Object.keys(PROVIDERS); // tự động lấy đúng danh sách provider thật sự tồn tại
 
@@ -591,6 +678,23 @@ async function ask(req, res) {
         );
     }
     const provider = llm_provider || "gemini"; // mặc định khi không truyền, KHÔNG fallback khi truyền sai
+
+    // province_id ứng với 8 tab tỉnh/thành trên frontend (= id trong bảng provinces_new)
+    const VALID_PROVINCE_IDS = [1, 7, 9, 11, 14, 16, 18, 20];
+    let provinceId = null;
+    if (province_id !== undefined && province_id !== null) {
+      provinceId = Number(province_id);
+      if (!VALID_PROVINCE_IDS.includes(provinceId)) {
+        return res
+          .status(400)
+          .json(
+            fail(
+              `province_id "${province_id}" không hợp lệ. Chọn 1 trong: ${VALID_PROVINCE_IDS.join(", ")}`,
+              "VALIDATION_ERROR",
+            ),
+          );
+      }
+    }
     const selectedModel = [
       "rule_based",
       "naive_rag",
@@ -615,14 +719,14 @@ async function ask(req, res) {
 
     if (selectedModel === "rule_based") {
       result =
-        (await tryOldUnitMatch(question)) ||
-        (await tryNewUnitMatch(question)) ||
+        (await tryOldUnitMatch(question, provinceId)) ||
+        (await tryNewUnitMatch(question, provinceId)) ||
         (await tryOldProvinceMatch(question));
     } else if (selectedModel === "naive_rag") {
       result = await tryVectorSearch(question, provider);
     } else if (selectedModel === "advanced_rag") {
       try {
-        result = await tryAdvancedRAG(question, provider);
+        result = await tryAdvancedRAG(question, provider, provinceId);
       } catch (err) {
         if (isConnectionError(err)) {
           return res.status(503).json({
@@ -636,7 +740,7 @@ async function ask(req, res) {
         throw err; // lỗi không xác định — vẫn nên biết để debug tiếp, không nuốt âm thầm
       }
     } else {
-      result = await tryModularRAG(question, provider);
+      result = await tryModularRAG(question, provider, provinceId);
     }
     if (result && result.no_answer) {
       const qaLogId = await logQa(
