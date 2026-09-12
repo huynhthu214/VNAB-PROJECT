@@ -6,22 +6,103 @@ const XLSX = require("xlsx");
 
 // ============ CẤU HÌNH — ĐỔI 2 DÒNG NÀY GIỮA CÁC LƯỢT CHẠY ============
 const LLM_PROVIDER = "gemini";
-const MODELS_TO_RUN = ["advanced_rag"];
-const TEST_SET_PATH = path.join(__dirname, "../data/pilot_test_set.xlsx");
+const MODELS_TO_RUN = [
+  "rule_based",
+  "naive_rag",
+  "advanced_rag",
+  "modular_rag",
+];
+const TEST_SET_PATH = path.join(__dirname, "../data/test_matrix_TPHCM.xlsx");
+// const TEST_SET_PATH = path.join(__dirname, "../data/pilot_test_set.xlsx");
 
 const API_BASE_URL = "http://localhost:3000/api/v1";
-const RESULTS_DIR = path.join(__dirname, "../data/batch_results");
+const RESULTS_DIR = path.join(
+  __dirname,
+  "../data/batch_results/official_batch",
+);
 const SUMMARY_PATH = path.join(RESULTS_DIR, "timing_summary.xlsx");
 
 const CONCURRENCY = 4; // chỉ áp dụng cho rule_based (không gọi AI)
-const REQUEST_DELAY_MS = 4500; // giãn cách giữa mỗi câu khi gọi LLM (naive_rag, modular_rag)
+// Riêng advanced_rag cần giãn cách gấp đôi vì gọi LLM 2 lần/câu
+const REQUEST_DELAY_MS_BY_MODEL = {
+  naive_rag: 4500,
+  advanced_rag: 9000,
+  modular_rag: 4500,
+};
 const DELAY_BETWEEN_MODELS_MS = 5000;
 
 // ============ ĐỌC BỘ CÂU HỎI TỪ FILE XLSX ============
 function readTestSet(filePath) {
   const workbook = XLSX.readFile(filePath);
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet);
+
+  // Dùng sheet TestCases_150 của test_matrix_TPHCM.xlsx
+  const sheet = workbook.Sheets["TestCases_150"];
+  // const sheet = workbook.Sheets["PilotSet"]; // thay vì "TestCases_150"
+
+  if (!sheet) {
+    throw new Error("Không tìm thấy sheet 'TestCases_150' trong test set.");
+  }
+  // if (!sheet) {
+  //   throw new Error("Không tìm thấy sheet 'PilotSet' trong file pilot.");
+  // }
+
+  const rows = XLSX.utils.sheet_to_json(sheet);
+
+  return rows.map((row) => ({
+    // ID mới của test matrix
+    id: row.test_id,
+    test_id: row.test_id,
+
+    category: row.category,
+
+    question: row.question,
+
+    expected_answer: row.expected_answer,
+
+    // Không phải field gốc của Test Matrix,
+    // nhưng runner cũ cần field này.
+    expected_branch: inferExpectedBranch(row.category),
+
+    source_doc: "1685/NQ-UBTVQH15",
+
+    verified_by_team: "chua_duyet",
+
+    // ===== Các field mới, giữ lại để đánh giá sau =====
+    old_unit_name: row.old_unit_name || "",
+    old_parent: row.old_parent || "",
+    expected_count: row.expected_count ?? "",
+    must_contain: row.must_contain || "",
+    must_not_contain: row.must_not_contain || "",
+    difficulty: row.difficulty || "",
+    golden: row.golden || "NO",
+    notes: row.notes || "",
+  }));
+}
+
+function inferExpectedBranch(category) {
+  switch (category) {
+    case "T1_1_to_1":
+    case "T2_1_to_N":
+    case "T4_mot_phan":
+      return "structured";
+
+    case "T3_N_to_1":
+    case "T5_new_to_old":
+    case "T6_count":
+      return "structured_or_hybrid";
+
+    case "T7_typo_no_diacritic":
+      return "structured_or_hybrid";
+
+    case "T8_ambiguous":
+      return "structured_or_hybrid";
+
+    case "T8_out_of_scope":
+      return "no_answer";
+
+    default:
+      return "";
+  }
 }
 
 // ============ SIMPLE CONCURRENCY LIMITER (chỉ dùng cho rule_based) ============
@@ -53,12 +134,18 @@ function sleep(ms) {
 }
 
 // ============ GỌI API 1 CÂU HỎI (có retry 1 lần nếu bị rate limit) ============
-async function callAskApi(question, model, provider, isRetry = false) {
+async function callAskApi(
+  question,
+  model,
+  provider,
+  provinceId = 1,
+  isRetry = false,
+) {
   const startTime = Date.now();
   try {
     const res = await axios.post(
       `${API_BASE_URL}/qa/ask`,
-      { question, model, llm_provider: provider },
+      { question, model, llm_provider: provider, province_id: provinceId },
       { timeout: 120000 },
     );
     return {
@@ -75,7 +162,7 @@ async function callAskApi(question, model, provider, isRetry = false) {
     if (errorCode === "RATE_LIMITED" && !isRetry) {
       console.log("    (bị rate limit, chờ 20s rồi thử lại 1 lần)");
       await sleep(20000);
-      return callAskApi(question, model, provider, true);
+      return callAskApi(question, model, provider, provinceId, true);
     }
     return {
       success: false,
@@ -102,20 +189,118 @@ function readJsonLines(filePath) {
     .map((l) => JSON.parse(l));
 }
 
+function evaluateAnswer(q, result) {
+  if (!result.success) {
+    return {
+      pass: null, // KHÔNG tính true/false — đây là lỗi hạ tầng, loại khỏi mẫu số
+      reason: "API_ERROR",
+    };
+  }
+
+  const answer = (result.answer || "").toLowerCase();
+
+  // ===== Out of scope =====
+  if (q.category === "T8_out_of_scope") {
+    const hasNoAnswer =
+      result.answer_type === "no_answer" ||
+      answer.includes("ngoài phạm vi") ||
+      answer.includes("không có thông tin");
+
+    return {
+      pass: hasNoAnswer,
+      reason: hasNoAnswer ? "PASS" : "EXPECTED_NO_ANSWER",
+    };
+  }
+
+  // ===== Ambiguous =====
+  if (q.category === "T8_ambiguous") {
+    const asksForContext =
+      answer.includes("quận") ||
+      answer.includes("huyện") ||
+      answer.includes("bổ sung") ||
+      answer.includes("chưa đủ thông tin");
+
+    return {
+      pass: asksForContext,
+      reason: asksForContext ? "PASS" : "DID_NOT_DISAMBIGUATE",
+    };
+  }
+
+  // ===== must_contain =====
+  const required = (q.must_contain || "")
+    .split("|")
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean);
+
+  const missing = required.filter((item) => !answer.includes(item));
+
+  if (missing.length > 0) {
+    return {
+      pass: false,
+      reason: "MISSING_ENTITY",
+      missing,
+    };
+  }
+
+  // ===== must_not_contain =====
+  const forbidden = (q.must_not_contain || "")
+    .split("|")
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean);
+
+  const foundForbidden = forbidden.filter((item) => answer.includes(item));
+
+  if (foundForbidden.length > 0) {
+    return {
+      pass: false,
+      reason: "FORBIDDEN_ENTITY",
+      foundForbidden,
+    };
+  }
+
+  return {
+    pass: true,
+    reason: "PASS",
+  };
+}
+
 function buildResultRow(q, model, result) {
+  const evaluation = evaluateAnswer(q, result);
+
   return {
     id: q.id,
+    test_id: q.test_id,
     category: q.category,
+
+    old_unit_name: q.old_unit_name,
+    old_parent: q.old_parent,
+
     question: q.question,
     expected_answer: q.expected_answer,
+    expected_count: q.expected_count,
+
+    must_contain: q.must_contain,
+    must_not_contain: q.must_not_contain,
+
     model,
     llm_provider: LLM_PROVIDER,
+
     answer_type: result.answer_type,
     answer: result.answer,
     confidence: result.confidence,
     response_time_ms: result.response_time_ms,
+
     success: result.success,
     error: result.error,
+
+    // ===== EVALUATION =====
+    pass: evaluation.pass,
+    evaluation_reason: evaluation.reason || "",
+    missing_items: (evaluation.missing || []).join(" | "),
+    forbidden_items: (evaluation.foundForbidden || []).join(" | "),
+
+    difficulty: q.difficulty,
+    golden: q.golden,
   };
 }
 
@@ -133,7 +318,7 @@ async function runModel(model, questions, tempJsonlPath) {
     await Promise.all(
       questions.map((q) =>
         limit(async () => {
-          const result = await callAskApi(q.question, model, LLM_PROVIDER);
+          const result = await callAskApi(q.question, model, LLM_PROVIDER, 1);
           appendJsonLine(tempJsonlPath, buildResultRow(q, model, result));
           done++;
           if (done % 10 === 0 || done === questions.length)
@@ -144,11 +329,13 @@ async function runModel(model, questions, tempJsonlPath) {
   } else {
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
-      const result = await callAskApi(q.question, model, LLM_PROVIDER);
+      const result = await callAskApi(q.question, model, LLM_PROVIDER, 1);
       appendJsonLine(tempJsonlPath, buildResultRow(q, model, result));
       if ((i + 1) % 10 === 0 || i + 1 === questions.length)
         console.log(`  [${model}] Đã xong ${i + 1}/${questions.length}`);
-      if (i < questions.length - 1) await sleep(REQUEST_DELAY_MS);
+      if (i < questions.length - 1) {
+        await sleep(REQUEST_DELAY_MS_BY_MODEL[model]);
+      }
     }
   }
 
@@ -160,6 +347,8 @@ async function runModel(model, questions, tempJsonlPath) {
     total_questions: rows.length,
     success_count: rows.filter((r) => r.success).length,
     error_count: rows.filter((r) => !r.success).length,
+    pass_count: rows.filter((r) => r.pass === true).length,
+    valid_count: rows.filter((r) => r.pass !== null).length,
     answer_rag_generated: rows.filter((r) => r.answer_type === "rag_generated")
       .length,
     answer_structured_lookup: rows.filter(
@@ -177,7 +366,7 @@ async function runModel(model, questions, tempJsonlPath) {
     `=== Hoàn tất model: ${model} | Tổng thời gian: ${elapsedSec}s ===`,
   );
   console.log(
-    `    success: ${stats.success_count}/${stats.total_questions} | rag_generated: ${stats.answer_rag_generated} | structured: ${stats.answer_structured_lookup} | no_answer: ${stats.answer_no_answer} | lỗi: ${stats.error_count}`,
+    `    pass THẬT (đã loại API_ERROR): ${stats.pass_count}/${stats.valid_count} | success: ${stats.success_count}/${stats.total_questions} | rag_generated: ${stats.answer_rag_generated} | structured: ${stats.answer_structured_lookup} | no_answer: ${stats.answer_no_answer} | lỗi: ${stats.error_count}`,
   );
 
   return stats;
@@ -289,26 +478,13 @@ async function run() {
 
     convertJsonlToXlsx(tempJsonlPath, xlsxPath, model);
     console.log(`Đã lưu: ${xlsxPath}`);
+    fs.unlinkSync(tempJsonlPath);
 
     if (model !== MODELS_TO_RUN[MODELS_TO_RUN.length - 1]) {
       await sleep(DELAY_BETWEEN_MODELS_MS);
     }
   }
-  // Thêm trước dòng appendSummaryRows(allStats);
-  const backupPath = path.join(
-    RESULTS_DIR,
-    `_summary_backup_${timestamp}.xlsx`,
-  );
-  try {
-    if (fs.existsSync(SUMMARY_PATH)) {
-      fs.copyFileSync(SUMMARY_PATH, backupPath);
-    }
-  } catch (err) {
-    console.warn(
-      "Không backup được timing_summary.xlsx (bỏ qua):",
-      err.message,
-    );
-  }
+
   appendSummaryRows(allStats);
 
   const totalElapsedSec = ((Date.now() - runStartedAt) / 1000).toFixed(1);

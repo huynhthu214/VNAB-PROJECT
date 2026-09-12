@@ -111,6 +111,20 @@ async function logQa(
   }
 }
 // ============ MODEL 1: RULE-BASED (structured lookup) ============
+// Nhận diện câu hỏi đang hỏi theo chiều "mới -> cũ" (hình thành từ, gồm những đơn vị...)
+// để ưu tiên gọi tryNewUnitMatch trước, tránh trường hợp tên đơn vị mới trùng tên
+// 1 đơn vị cũ thành phần (VD "Phường Bến Thành") khiến tryOldUnitMatch trả lời nhầm chiều.
+function isAggregationIntent(question) {
+  const q = question.toLowerCase();
+  return (
+    q.includes("được hình thành từ") ||
+    q.includes("hình thành từ") ||
+    q.includes("sáp nhập từ") ||
+    q.includes("được sắp xếp từ") ||
+    q.includes("gồm những đơn vị") ||
+    (q.includes("trước sắp xếp") && q.includes("gồm"))
+  );
+}
 
 async function tryOldUnitMatch(question, provinceId = null) {
   const { rows } = await pool.query(
@@ -358,15 +372,20 @@ async function tryVectorSearch(question, provider = "gemini") {
   const embedding = await getEmbedding(question);
   const vectorLiteral = `[${embedding.join(",")}]`;
 
-  // Bỏ ràng buộc SCOPE_KEYWORDS cứng nhắc ở mức SQL, để vector search tập trung vào độ tương đồng ngữ nghĩa
+  const scopeFilter = SCOPE_KEYWORDS.map(
+    (_, i) => `c.content ILIKE $${i + 2}`,
+  ).join(" OR ");
+  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
+
   const { rows } = await pool.query(
     `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
             1 - (c.embedding <=> $1) AS similarity
      FROM document_chunks c
      JOIN legal_documents d ON d.id = c.document_id
+     WHERE (${scopeFilter})
      ORDER BY c.embedding <=> $1
      LIMIT 5`,
-    [vectorLiteral],
+    [vectorLiteral, ...scopeParams],
   );
 
   const relevant = rows.filter((r) => r.similarity > 0.4); // Giảm nhẹ ngưỡng similarity xuống 0.4 để an toàn
@@ -423,12 +442,6 @@ async function vectorSearchTopN(question, topN = 10, provinceId = null) {
   const embedding = await getEmbedding(question);
   const vectorLiteral = `[${embedding.join(",")}]`;
 
-  // Nếu có chọn tab tỉnh: LỌC CHẶT, không cho chunk NULL lọt qua.
-  // Lý do: các chunk "thô" tách từ văn bản gốc (chunkDocuments.js) chưa được
-  // gán province_new_id (luôn NULL) vì 1 văn bản có thể liệt kê sáp nhập của
-  // nhiều tỉnh cùng lúc -> nếu cho NULL lọt qua sẽ lại bị trộn dữ liệu toàn quốc
-  // y như lỗi cũ. Chỉ khi lọc chặt mà KHÔNG ra kết quả nào mới nới lỏng ra tìm
-  // toàn bộ (kèm cảnh báo answer có thể ngoài phạm vi tab).
   if (provinceId) {
     const scoped = await pool.query(
       `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
@@ -444,20 +457,30 @@ async function vectorSearchTopN(question, topN = 10, provinceId = null) {
     // Không có chunk nào được gán đúng tab này -> rơi xuống tìm không giới hạn bên dưới
   }
 
+  const scopeFilter = SCOPE_KEYWORDS.map(
+    (_, i) => `c.content ILIKE $${i + 3}`,
+  ).join(" OR ");
+  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
+
   const { rows } = await pool.query(
     `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
             1 - (c.embedding <=> $1) AS similarity
      FROM document_chunks c
      JOIN legal_documents d ON d.id = c.document_id
+     WHERE (${scopeFilter})
      ORDER BY c.embedding <=> $1
      LIMIT $2`,
-    [vectorLiteral, topN],
+    [vectorLiteral, topN, ...scopeParams],
   );
 
   return rows;
 }
 
-const RERANK_THRESHOLD = -100;
+const RERANK_THRESHOLD = 0.9;
+// Ngưỡng riêng cho chunk tổng hợp chiều mới->cũ (SYNTHETIC-NEW2OLD) — CrossEncoder
+// chấm điểm thấp hệ thống cho loại chunk này do khác văn phong câu hỏi, dù nội
+// dung đúng chủ đề. Đã hiệu chỉnh từ pilot test (điểm quan sát 0.46-0.90).
+const RERANK_THRESHOLD_NEW2OLD = 0.45;
 
 async function tryAdvancedRAG(
   question,
@@ -477,12 +500,19 @@ async function tryAdvancedRAG(
   }
 
   const reranked = await rerankChunks(rewrittenQuestion, topN, 12);
-  if (!reranked[0] || reranked[0].rerank_score < RERANK_THRESHOLD) {
+
+  const topChunk = reranked[0];
+  const effectiveThreshold =
+    topChunk?.doc_code === "SYNTHETIC-NEW2OLD"
+      ? RERANK_THRESHOLD_NEW2OLD
+      : RERANK_THRESHOLD;
+
+  if (!topChunk || topChunk.rerank_score < effectiveThreshold) {
     return {
       no_answer: true,
       model_used: "advanced_rag",
       rewritten_question: rewrittenQuestion,
-      rerank_top_score: reranked[0]?.rerank_score ?? null,
+      rerank_top_score: topChunk?.rerank_score ?? null,
     };
   }
 
@@ -605,11 +635,14 @@ async function tryHybridRetrieval(question) {
 }
 
 async function tryModularRAG(question, provider = "gemini", provinceId = null) {
-  const structuredResult =
-    (await tryOldUnitMatch(question, provinceId)) ||
-    (await tryNewUnitMatch(question, provinceId)) ||
-    (await tryOldProvinceMatch(question));
-
+  const aggIntent = isAggregationIntent(question);
+  const structuredResult = aggIntent
+    ? (await tryNewUnitMatch(question, provinceId)) ||
+      (await tryOldUnitMatch(question, provinceId)) ||
+      (await tryOldProvinceMatch(question))
+    : (await tryOldUnitMatch(question, provinceId)) ||
+      (await tryNewUnitMatch(question, provinceId)) ||
+      (await tryOldProvinceMatch(question));
   if (structuredResult) {
     return {
       ...structuredResult,
@@ -718,10 +751,14 @@ async function ask(req, res) {
     let result;
 
     if (selectedModel === "rule_based") {
-      result =
-        (await tryOldUnitMatch(question, provinceId)) ||
-        (await tryNewUnitMatch(question, provinceId)) ||
-        (await tryOldProvinceMatch(question));
+      const aggIntent = isAggregationIntent(question);
+      result = aggIntent
+        ? (await tryNewUnitMatch(question, provinceId)) ||
+          (await tryOldUnitMatch(question, provinceId)) ||
+          (await tryOldProvinceMatch(question))
+        : (await tryOldUnitMatch(question, provinceId)) ||
+          (await tryNewUnitMatch(question, provinceId)) ||
+          (await tryOldProvinceMatch(question));
     } else if (selectedModel === "naive_rag") {
       result = await tryVectorSearch(question, provider);
     } else if (selectedModel === "advanced_rag") {
