@@ -46,36 +46,31 @@ async function callGemini(systemPrompt, question) {
     },
   });
   const result = await model.generateContent(question);
-  return result.response.text();
+  const usage = result.response.usageMetadata; // Gemini SDK tự trả kèm
+  return {
+    text: result.response.text(),
+    input_tokens: usage?.promptTokenCount ?? null,
+    output_tokens: usage?.candidatesTokenCount ?? null,
+  };
 }
 
-async function callGeminiReasoning(systemPrompt, question) {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-3.1-pro", // model mạnh hơn hẳn flash-lite, hỗ trợ suy luận sâu
-    systemInstruction: systemPrompt,
-    generationConfig: {
-      thinkingConfig: {
-        thinkingLevel: "high", // mức suy luận cao nhất hỗ trợ
-      },
-    },
-  });
-  const result = await model.generateContent(question);
-  return result.response.text();
-}
-
-async function callOpenRouter(systemPrompt, question) {
+async function callGroq(systemPrompt, question) {
   const res = await axios.post(
-    "https://openrouter.ai/api/v1/chat/completions",
+    "https://api.groq.com/openai/v1/chat/completions",
     {
-      model: "openrouter/free",
+      model: "openai/gpt-oss-120b",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: question },
       ],
     },
-    { headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` } },
+    { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` } },
   );
-  return res.data.choices[0].message.content;
+  return {
+    text: res.data.choices[0].message.content,
+    input_tokens: res.data.usage?.prompt_tokens ?? null,
+    output_tokens: res.data.usage?.completion_tokens ?? null,
+  };
 }
 
 const { CohereClientV2 } = require("cohere-ai");
@@ -89,22 +84,20 @@ async function callCohere(systemPrompt, question) {
       { role: "user", content: question },
     ],
   });
-
   const textPart = response.message.content.find((c) => c.type === "text");
-  if (!textPart) {
-    throw new Error(
-      "Cohere không trả về nội dung text hợp lệ: " +
-        JSON.stringify(response.message.content),
-    );
-  }
-  return textPart.text;
+  if (!textPart) throw new Error("Cohere không trả về nội dung text hợp lệ");
+
+  return {
+    text: textPart.text,
+    input_tokens: response.usage?.tokens?.inputTokens ?? null,
+    output_tokens: response.usage?.tokens?.outputTokens ?? null,
+  };
 }
 
 const PROVIDERS = {
   gemini: callGemini,
   cohere: callCohere,
-  openrouter: callOpenRouter,
-  // gemini_reasoning: callGeminiReasoning,
+  groq: callGroq,
 };
 
 async function callLLM(providerName, systemPrompt, question) {
@@ -123,39 +116,6 @@ async function callLLM(providerName, systemPrompt, question) {
     }
     throw err;
   }
-}
-
-async function callLLMWithFallback(
-  systemPrompt,
-  question,
-  preferredProvider = "gemini",
-) {
-  const order = [
-    preferredProvider,
-    ...FALLBACK_ORDER.filter((p) => p !== preferredProvider),
-  ];
-  const attempted = [];
-
-  for (const provider of order) {
-    attempted.push(provider);
-    try {
-      const answer = await callLLM(provider, systemPrompt, question);
-      return {
-        answer,
-        actual_provider: provider,
-        fallback_used: attempted.length > 1,
-        provider_attempted_order: attempted.join(" -> "),
-      };
-    } catch (err) {
-      if (
-        err instanceof RateLimitError ||
-        err instanceof ServiceUnavailableError
-      )
-        continue;
-      throw err;
-    }
-  }
-  throw new ServiceUnavailableError("Tất cả LLM provider đều không khả dụng");
 }
 
 module.exports = {

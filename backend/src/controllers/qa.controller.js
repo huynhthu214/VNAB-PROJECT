@@ -45,8 +45,16 @@ Viết lại câu hỏi sau cho rõ nghĩa hơn: sửa lỗi chính tả, thêm 
 làm rõ ý mơ hồ. GIỮ NGUYÊN Ý GỐC, không thêm thông tin không có trong câu hỏi.
 Chỉ trả về câu hỏi đã viết lại, không giải thích gì thêm.`;
 
-  const rewritten = await callLLM(provider, systemPrompt, question);
-  return rewritten?.trim() || question;
+  const { text, input_tokens, output_tokens } = await callLLM(
+    provider,
+    systemPrompt,
+    question,
+  );
+  return {
+    rewritten: text?.trim() || question,
+    input_tokens: input_tokens ?? 0,
+    output_tokens: output_tokens ?? 0,
+  };
 }
 
 async function rerankChunks(question, chunks, topK = 5) {
@@ -84,11 +92,13 @@ async function logQa(
   responseTimeMs,
   rewrittenQuestion = null,
   rerankTopScore = null,
+  inputTokens = null,
+  outputTokens = null,
 ) {
   try {
     const { rows } = await pool.query(
-      `INSERT INTO qa_logs (session_id, question, answer, answer_type, model_used, llm_provider, routing_decision, confidence, response_time_ms, rewritten_question, rerank_top_score)
-   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO qa_logs (session_id, question, answer, answer_type, model_used, llm_provider, routing_decision, confidence, response_time_ms, rewritten_question, rerank_top_score, input_tokens, output_tokens)
+   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
    RETURNING id`,
       [
         sessionId || null,
@@ -102,6 +112,8 @@ async function logQa(
         responseTimeMs,
         rewrittenQuestion,
         rerankTopScore,
+        inputTokens,
+        outputTokens,
       ],
     );
     return rows[0].id;
@@ -401,7 +413,11 @@ Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, P
 Đoạn văn bản:
 ${context}`;
 
-  const llmAnswer = await callLLM(provider, systemPrompt, question);
+  const {
+    text: llmAnswer,
+    input_tokens,
+    output_tokens,
+  } = await callLLM(provider, systemPrompt, question);
   if (!llmAnswer || typeof llmAnswer !== "string") {
     console.error(
       `Provider ${provider} trả về giá trị không hợp lệ:`,
@@ -409,7 +425,14 @@ ${context}`;
     );
     return null;
   }
-  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU") return null;
+  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU") {
+    return {
+      no_answer: true,
+      model_used: "naive_rag",
+      input_tokens,
+      output_tokens,
+    };
+  }
 
   const uniqueSources = [
     ...new Map(
@@ -432,6 +455,8 @@ ${context}`;
     model_used: "naive_rag",
     llm_provider: provider,
     confidence: Math.max(...relevant.map((r) => r.similarity)),
+    input_tokens,
+    output_tokens,
     sources: uniqueSources,
   };
 }
@@ -487,7 +512,10 @@ async function tryAdvancedRAG(
   provider = "gemini",
   provinceId = null,
 ) {
-  const rewrittenQuestion = await rewriteQuestion(question, provider);
+  const rw = await rewriteQuestion(question, provider);
+  const rewrittenQuestion = rw.rewritten;
+  let totalInputTokens = rw.input_tokens;
+  let totalOutputTokens = rw.output_tokens;
 
   const topN = await vectorSearchTopN(rewrittenQuestion, 20, provinceId);
   if (topN.length === 0) {
@@ -496,6 +524,8 @@ async function tryAdvancedRAG(
       model_used: "advanced_rag",
       rewritten_question: rewrittenQuestion,
       rerank_top_score: null,
+      input_tokens: totalInputTokens,
+      output_tokens: totalOutputTokens,
     };
   }
 
@@ -513,6 +543,8 @@ async function tryAdvancedRAG(
       model_used: "advanced_rag",
       rewritten_question: rewrittenQuestion,
       rerank_top_score: topChunk?.rerank_score ?? null,
+      input_tokens: totalInputTokens,
+      output_tokens: totalOutputTokens,
     };
   }
 
@@ -526,13 +558,22 @@ Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, P
 Đoạn văn bản:
 ${context}`;
 
-  const llmAnswer = await callLLM(provider, systemPrompt, rewrittenQuestion);
+  const {
+    text: llmAnswer,
+    input_tokens: ansIn,
+    output_tokens: ansOut,
+  } = await callLLM(provider, systemPrompt, rewrittenQuestion);
+  totalInputTokens += ansIn ?? 0;
+  totalOutputTokens += ansOut ?? 0;
+
   if (!llmAnswer || llmAnswer.trim() === "KHONG_CO_DU_LIEU") {
     return {
       no_answer: true,
       model_used: "advanced_rag",
       rewritten_question: rewrittenQuestion,
-      rerank_top_score: reranked[0].rerank_score, // GIỮ LẠI điểm đã tính, dù LLM từ chối trả lời
+      rerank_top_score: reranked[0].rerank_score,
+      input_tokens: totalInputTokens,
+      output_tokens: totalOutputTokens,
     };
   }
 
@@ -559,6 +600,8 @@ ${context}`;
     rewritten_question: rewrittenQuestion,
     rerank_top_score: reranked[0].rerank_score,
     confidence: reranked[0].rerank_score,
+    input_tokens: totalInputTokens,
+    output_tokens: totalOutputTokens,
     sources: uniqueSources,
   };
 }
@@ -664,8 +707,19 @@ Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, P
 Đoạn văn bản:
 ${context}`;
 
-  const llmAnswer = await callLLM(provider, systemPrompt, question);
-  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU") return null;
+  const {
+    text: llmAnswer,
+    input_tokens,
+    output_tokens,
+  } = await callLLM(provider, systemPrompt, question);
+  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU")
+    return {
+      no_answer: true,
+      model_used: "modular_rag",
+      routing_decision: "hybrid_retrieval",
+      input_tokens,
+      output_tokens,
+    };
 
   const uniqueSources = [
     ...new Map(
@@ -688,6 +742,8 @@ ${context}`;
     routing_decision: "hybrid_retrieval",
     llm_provider: provider,
     confidence: 0.8,
+    input_tokens,
+    output_tokens,
     sources: uniqueSources,
   };
 }
@@ -787,11 +843,13 @@ async function ask(req, res) {
         "no_answer",
         result.model_used,
         provider,
-        null,
+        result.routing_decision || null,
         0,
         Date.now() - startTime,
         result.rewritten_question,
         result.rerank_top_score,
+        result.input_tokens ?? null,
+        result.output_tokens ?? null,
       );
       return res.status(200).json({
         success: true,
@@ -822,6 +880,8 @@ async function ask(req, res) {
         Date.now() - startTime,
         result.rewritten_question || null,
         result.rerank_top_score || null,
+        result.input_tokens ?? null,
+        result.output_tokens ?? null,
       );
       const {
         model_used,
