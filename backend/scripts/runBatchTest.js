@@ -5,15 +5,20 @@ const axios = require("axios");
 const XLSX = require("xlsx");
 
 // ============ CẤU HÌNH — ĐỔI 2 DÒNG NÀY GIỮA CÁC LƯỢT CHẠY ============
-const LLM_PROVIDER = "gemini";
+const LLM_PROVIDER = "cohere";
 const MODELS_TO_RUN = [
-  "rule_based",
-  "naive_rag",
+  // "rule_based",
+  // "naive_rag",
   "advanced_rag",
-  "modular_rag",
+  // "modular_rag",
 ];
 const TEST_SET_PATH = path.join(__dirname, "../data/test_matrix_TPHCM.xlsx");
 // const TEST_SET_PATH = path.join(__dirname, "../data/pilot_test_set.xlsx");
+const questions =
+  LLM_PROVIDER === "groq"
+    ? readTestSet(TEST_SET_PATH).slice(0, GROQ_SAMPLE_SIZE)
+    : readTestSet(TEST_SET_PATH);
+const GROQ_SAMPLE_SIZE = 30; // giữ nguyên quy mô pilot cho Groq, tránh chạm TPD
 
 const API_BASE_URL = "http://localhost:3000/api/v1";
 const RESULTS_DIR = path.join(
@@ -25,9 +30,9 @@ const SUMMARY_PATH = path.join(RESULTS_DIR, "timing_summary.xlsx");
 const CONCURRENCY = 4; // chỉ áp dụng cho rule_based (không gọi AI)
 // Riêng advanced_rag cần giãn cách gấp đôi vì gọi LLM 2 lần/câu
 const REQUEST_DELAY_MS_BY_MODEL = {
-  naive_rag: 4500,
-  advanced_rag: 9000,
-  modular_rag: 4500,
+  naive_rag: LLM_PROVIDER === "groq" ? 15000 : 4500,
+  advanced_rag: LLM_PROVIDER === "groq" ? 45000 : 9000, // ước lượng thô, chờ số thật để chỉnh chính xác
+  modular_rag: LLM_PROVIDER === "groq" ? 8000 : 4500, // phần lớn structured_lookup, ít bị TPM ảnh hưởng
 };
 const DELAY_BETWEEN_MODELS_MS = 5000;
 
@@ -139,8 +144,9 @@ async function callAskApi(
   model,
   provider,
   provinceId = 1,
-  isRetry = false,
+  attempt = 0,
 ) {
+  const MAX_RETRIES = 3;
   const startTime = Date.now();
   try {
     const res = await axios.post(
@@ -159,10 +165,14 @@ async function callAskApi(
     };
   } catch (err) {
     const errorCode = err.response?.data?.error_code;
-    if (errorCode === "RATE_LIMITED" && !isRetry) {
-      console.log("    (bị rate limit, chờ 20s rồi thử lại 1 lần)");
-      await sleep(20000);
-      return callAskApi(question, model, provider, provinceId, true);
+    if (errorCode === "RATE_LIMITED" && attempt < MAX_RETRIES) {
+      const retryAfterMs = err.response?.data?.retry_after_ms;
+      const waitMs = retryAfterMs || 20000 * Math.pow(2, attempt);
+      console.log(
+        `    (bị rate limit, chờ ${Math.round(waitMs / 1000)}s, thử lại lần ${attempt + 1}/${MAX_RETRIES})`,
+      );
+      await sleep(waitMs);
+      return callAskApi(question, model, provider, provinceId, attempt + 1);
     }
     return {
       success: false,
@@ -189,15 +199,20 @@ function readJsonLines(filePath) {
     .map((l) => JSON.parse(l));
 }
 
+function normalizeAnswerText(s) {
+  if (!s) return s;
+  return s.replace(/[\u00a0\u202f\u2009\u2007\u2002\u2003]/g, " ");
+}
+
 function evaluateAnswer(q, result) {
   if (!result.success) {
     return {
-      pass: null, // KHÔNG tính true/false — đây là lỗi hạ tầng, loại khỏi mẫu số
+      pass: null,
       reason: "API_ERROR",
     };
   }
 
-  const answer = (result.answer || "").toLowerCase();
+  const answer = normalizeAnswerText(result.answer || "").toLowerCase();
 
   // ===== Out of scope =====
   if (q.category === "T8_out_of_scope") {
@@ -441,7 +456,7 @@ async function warmUp() {
       err.message,
     );
   }
-  console.log("Warm-up hoàn tất. Đợi 5 giây trước khi bắt đầu batch thật...");
+  console.log("Warm-up hoàn tất. Đợi 5 giây trước khi bắt đầu...");
   await new Promise((r) => setTimeout(r, 5000));
 }
 
@@ -456,7 +471,7 @@ async function run() {
 
   const questions = readTestSet(TEST_SET_PATH);
   console.log(
-    `Đã đọc ${questions.length} câu hỏi. Provider lần này: ${LLM_PROVIDER}. Model: ${MODELS_TO_RUN.join(", ")}`,
+    `Đã đọc ${questions.length} câu hỏi. Provider: ${LLM_PROVIDER}. Model: ${MODELS_TO_RUN.join(", ")}`,
   );
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");

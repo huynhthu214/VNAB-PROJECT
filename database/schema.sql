@@ -230,24 +230,17 @@ ALTER TABLE qa_logs ADD CONSTRAINT qa_logs_model_used_check
 -- 10.3 section_label — nhãn "Điều X" / "Khoản Y" khi chunk văn bản
 --      (bổ sung nếu DB của bạn tạo trước khi sửa bug chunkDocuments.js)
 ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS section_label VARCHAR(50);
-
 -- ============================================================================
+-- 11. MIGRATION v1.4 — thêm cột đếm token, phục vụ tính chi phí theo
+--     provider (Gemini/Cohere/Groq) cho thí nghiệm phụ so sánh provider.
+--     Idempotent, chạy lại vô hại.
+-- ============================================================================
+ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS input_tokens INTEGER;
+ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS output_tokens INTEGER;
+
 -- HẾT FILE — kiểm tra nhanh sau khi chạy:
 --   SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
 --   (phải thấy đủ 9 bảng: legal_documents, provinces_old, provinces_new,
 --    province_mapping, admin_units_old, admin_units_new, unit_mapping,
 --    document_chunks, qa_logs)
 --
---   SELECT column_name FROM information_schema.columns
---   WHERE table_name = 'qa_logs' ORDER BY ordinal_position;
---   (phải thấy đủ: model_used, feedback_note, llm_provider, routing_decision,
---    rewritten_question, rerank_top_score)
---
---   SELECT column_name FROM information_schema.columns
---   WHERE table_name = 'document_chunks' ORDER BY ordinal_position;
---   (phải thấy đủ: content_tsv, section_label, embedding_model)
---
---   -- Test hybrid search (Model 4) vẫn hoạt động bình thường:
---   SELECT id, content FROM document_chunks
---   WHERE content_tsv @@ plainto_tsquery('simple', 'Bến Nghé') LIMIT 5;
--- ============================================================================

@@ -924,14 +924,13 @@ async function ask(req, res) {
   } catch (err) {
     console.error(err);
     if (err instanceof RateLimitError) {
-      return res
-        .status(429)
-        .json(
-          fail(
-            "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút.",
-            "RATE_LIMITED",
-          ),
-        );
+      return res.status(429).json({
+        ...fail(
+          "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút.",
+          "RATE_LIMITED",
+        ),
+        retry_after_ms: err.retryAfterMs || null,
+      });
     }
     if (err instanceof ServiceUnavailableError) {
       return res

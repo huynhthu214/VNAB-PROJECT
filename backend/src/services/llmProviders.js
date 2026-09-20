@@ -25,18 +25,9 @@ function isConnectionError(err) {
     causeCode === "ENOTFOUND"
   );
 }
-
 function isRateLimitError(err) {
   return err.status === 429 || err.response?.status === 429;
 }
-
-class RateLimitError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "RateLimitError";
-  }
-}
-
 async function callGemini(systemPrompt, question) {
   const model = genAI.getGenerativeModel({
     model: "gemini-3.5-flash-lite",
@@ -114,6 +105,65 @@ async function callLLM(providerName, systemPrompt, question) {
         `Không kết nối được LLM provider: ${providerName}`,
       );
     }
+    throw err;
+  }
+}
+
+class RateLimitError extends Error {
+  constructor(message, retryAfterMs = null) {
+    super(message);
+    this.name = "RateLimitError";
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+function getRetryAfterMs(err) {
+  const headerVal =
+    err.response?.headers?.["retry-after"] ??
+    err.response?.headers?.["Retry-After"];
+  if (!headerVal) return null;
+  const asSeconds = Number(headerVal);
+  return Number.isFinite(asSeconds) ? asSeconds * 1000 : null;
+}
+
+const MAX_LLM_RETRIES = 2;
+const BASE_BACKOFF_MS = 5000;
+
+async function callLLM(
+  providerName,
+  systemPrompt,
+  question,
+  attempt = 0,
+  retryWaitMsSoFar = 0,
+) {
+  const fn = PROVIDERS[providerName];
+  if (!fn) throw new Error(`Provider không hợp lệ: ${providerName}`);
+  try {
+    const result = await fn(systemPrompt, question);
+    return { ...result, retry_wait_ms: retryWaitMsSoFar }; // ← MỚI
+  } catch (err) {
+    if (isRateLimitError(err)) {
+      const retryAfterMs = getRetryAfterMs(err);
+      if (attempt < MAX_LLM_RETRIES) {
+        const waitMs = retryAfterMs ?? BASE_BACKOFF_MS * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, waitMs));
+        return callLLM(
+          providerName,
+          systemPrompt,
+          question,
+          attempt + 1,
+          retryWaitMsSoFar + waitMs,
+        );
+      }
+      throw new RateLimitError(
+        `Vượt giới hạn tần suất: ${providerName}`,
+        retryAfterMs,
+      );
+    }
+    if (isConnectionError(err))
+      throw new ServiceUnavailableError(
+        `Không kết nối được LLM provider: ${providerName}`,
+      );
     throw err;
   }
 }
