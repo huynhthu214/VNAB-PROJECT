@@ -1,7 +1,8 @@
-const axios = require("axios");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { CohereClientV2 } = require("cohere-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const cohere = new CohereClientV2({ token: process.env.COHERE_API_KEY });
 
 class ServiceUnavailableError extends Error {
   constructor(message) {
@@ -10,62 +11,50 @@ class ServiceUnavailableError extends Error {
   }
 }
 
+class RateLimitError extends Error {
+  constructor(message, retryAfterMs = null) {
+    super(message);
+    this.name = "RateLimitError";
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
 function isConnectionError(err) {
   const causeCode = err.cause?.code;
   return (
     err.code === "ECONNREFUSED" ||
     err.code === "ETIMEDOUT" ||
-    err.code === "ECONNABORTED" || // ← THÊM — axios timeout
+    err.code === "ECONNABORTED" || // axios timeout
     err.status >= 500 ||
     err.response?.status >= 500 ||
     err.message === "fetch failed" ||
-    (err.message && err.message.includes("timeout")) || // ← THÊM — bắt cả câu "timeout of Nms exceeded"
+    (err.message && err.message.includes("timeout")) || // "timeout of Nms exceeded"
     causeCode === "ECONNREFUSED" ||
     causeCode === "ETIMEDOUT" ||
     causeCode === "ENOTFOUND"
   );
 }
+
 function isRateLimitError(err) {
   return err.status === 429 || err.response?.status === 429;
 }
+
 async function callGemini(systemPrompt, question) {
   const model = genAI.getGenerativeModel({
     model: "gemini-3.5-flash-lite",
     systemInstruction: systemPrompt,
     generationConfig: {
-      thinkingConfig: { thinkingLevel: "medium" }, // bật suy luận vừa phải, không cần "high" để tiết kiệm token/thời gian
+      thinkingConfig: { thinkingLevel: "medium" }, // suy luận vừa phải, tiết kiệm token/thời gian
     },
   });
   const result = await model.generateContent(question);
-  const usage = result.response.usageMetadata; // Gemini SDK tự trả kèm
+  const usage = result.response.usageMetadata;
   return {
     text: result.response.text(),
     input_tokens: usage?.promptTokenCount ?? null,
     output_tokens: usage?.candidatesTokenCount ?? null,
   };
 }
-
-async function callGroq(systemPrompt, question) {
-  const res = await axios.post(
-    "https://api.groq.com/openai/v1/chat/completions",
-    {
-      model: "openai/gpt-oss-120b",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: question },
-      ],
-    },
-    { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` } },
-  );
-  return {
-    text: res.data.choices[0].message.content,
-    input_tokens: res.data.usage?.prompt_tokens ?? null,
-    output_tokens: res.data.usage?.completion_tokens ?? null,
-  };
-}
-
-const { CohereClientV2 } = require("cohere-ai");
-const cohere = new CohereClientV2({ token: process.env.COHERE_API_KEY });
 
 async function callCohere(systemPrompt, question) {
   const response = await cohere.chat({
@@ -88,34 +77,7 @@ async function callCohere(systemPrompt, question) {
 const PROVIDERS = {
   gemini: callGemini,
   cohere: callCohere,
-  groq: callGroq,
 };
-
-async function callLLM(providerName, systemPrompt, question) {
-  const fn = PROVIDERS[providerName];
-  if (!fn) throw new Error(`Provider không hợp lệ: ${providerName}`);
-  try {
-    return await fn(systemPrompt, question);
-  } catch (err) {
-    if (isRateLimitError(err)) {
-      throw new RateLimitError(`Vượt giới hạn tần suất: ${providerName}`);
-    }
-    if (isConnectionError(err)) {
-      throw new ServiceUnavailableError(
-        `Không kết nối được LLM provider: ${providerName}`,
-      );
-    }
-    throw err;
-  }
-}
-
-class RateLimitError extends Error {
-  constructor(message, retryAfterMs = null) {
-    super(message);
-    this.name = "RateLimitError";
-    this.retryAfterMs = retryAfterMs;
-  }
-}
 
 function getRetryAfterMs(err) {
   const headerVal =
@@ -129,6 +91,14 @@ function getRetryAfterMs(err) {
 const MAX_LLM_RETRIES = 2;
 const BASE_BACKOFF_MS = 5000;
 
+// 1 request HTTP không được tự ý "treo" quá lâu bên trong để chờ retry.
+// Nếu provider (Gemini/Cohere) báo phải chờ hơn mức này, KHÔNG tự sleep()
+// trong lúc đang xử lý request của client. Báo lỗi NGAY với đúng retryAfterMs
+// thật, để tầng gọi (vd runBatchTest.js, đã có logic chờ đúng retry_after_ms)
+// tự quyết định có chờ hay không — việc chờ dài nên xảy ra ở nơi có thể
+// log/theo dõi/hủy được, không phải chôn trong 1 request/response.
+const MAX_SERVER_SIDE_WAIT_MS = 30000;
+
 async function callLLM(
   providerName,
   systemPrompt,
@@ -140,10 +110,19 @@ async function callLLM(
   if (!fn) throw new Error(`Provider không hợp lệ: ${providerName}`);
   try {
     const result = await fn(systemPrompt, question);
-    return { ...result, retry_wait_ms: retryWaitMsSoFar }; // ← MỚI
+    return { ...result, retry_wait_ms: retryWaitMsSoFar };
   } catch (err) {
     if (isRateLimitError(err)) {
       const retryAfterMs = getRetryAfterMs(err);
+
+      // Chờ thật quá dài -> báo lỗi ngay, không tự sleep bên trong request
+      if (retryAfterMs && retryAfterMs > MAX_SERVER_SIDE_WAIT_MS) {
+        throw new RateLimitError(
+          `Vượt giới hạn tần suất: ${providerName} (server yêu cầu chờ ${Math.round(retryAfterMs / 1000)}s — dài hơn mức server tự chờ ${MAX_SERVER_SIDE_WAIT_MS / 1000}s, trả lỗi ngay để tầng gọi tự xử lý)`,
+          retryAfterMs,
+        );
+      }
+
       if (attempt < MAX_LLM_RETRIES) {
         const waitMs = retryAfterMs ?? BASE_BACKOFF_MS * Math.pow(2, attempt);
         await new Promise((r) => setTimeout(r, waitMs));

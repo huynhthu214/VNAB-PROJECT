@@ -43,6 +43,13 @@ async function rewriteQuestion(question, provider = "gemini") {
   const systemPrompt = `Bạn là trợ lý chuẩn hóa câu hỏi tiếng Việt về địa giới hành chính.
 Viết lại câu hỏi sau cho rõ nghĩa hơn: sửa lỗi chính tả, thêm dấu tiếng Việt nếu thiếu,
 làm rõ ý mơ hồ. GIỮ NGUYÊN Ý GỐC, không thêm thông tin không có trong câu hỏi.
+
+TUYỆT ĐỐI KHÔNG được đổi CẤP hành chính đang được hỏi. Nếu câu gốc hỏi
+đơn vị này "thuộc/chia thành những ĐƠN VỊ HÀNH CHÍNH (phường/xã) nào",
+câu viết lại PHẢI vẫn hỏi ở cấp phường/xã — không được đổi thành hỏi
+"thuộc TỈNH/THÀNH PHỐ nào". Chỉ đổi cấp hỏi khi câu gốc tự nó đã hỏi ở
+cấp tỉnh/thành.
+
 Chỉ trả về câu hỏi đã viết lại, không giải thích gì thêm.`;
 
   const { text, input_tokens, output_tokens } = await callLLM(
@@ -136,6 +143,57 @@ function isAggregationIntent(question) {
     q.includes("gồm những đơn vị") ||
     (q.includes("trước sắp xếp") && q.includes("gồm"))
   );
+}
+
+// ============ MỚI: chặn false-positive structured lookup ============
+// Vấn đề đã phát hiện qua thực nghiệm (Chương 4): tryOldUnitMatch/tryNewUnitMatch
+// so khớp SUBSTRING tên đơn vị trong câu hỏi, không xét ý định câu hỏi. Nên câu
+// như "Giá đất của Phường 1 hiện nay là bao nhiêu?" khớp "Phường 1" và bị trả lời
+// nhầm bằng thông tin sáp nhập, dù câu hỏi thực chất về giá đất (ngoài phạm vi).
+// Đây LÀ danh sách CHẶN theo chủ đề rõ ràng KHÔNG liên quan ánh xạ hành chính,
+// không phải danh sách YÊU CẦU — cách này an toàn hơn (ít rủi ro chặn nhầm câu
+// hỏi hợp lệ) so với việc bắt buộc câu hỏi phải chứa từ khoá "thuộc/sáp nhập/...",
+// vì bộ câu hỏi kiểm thử có nhiều cách diễn đạt (kể cả không dấu ở nhóm T7) mà ta
+// không kiểm soát hết được.
+const OUT_OF_SCOPE_TOPIC_KEYWORDS = [
+  "giá đất",
+  "giá nhà",
+  "giá bất động sản",
+  "bất động sản",
+  "trường đại học",
+  "trường học",
+  "trường cấp",
+  "bệnh viện",
+  "thời tiết",
+  "dân số hiện tại",
+  "giá vàng",
+  "giá xăng",
+  "quán ăn",
+  "món ăn",
+  "du lịch",
+  "khách sạn",
+  "tuyển sinh",
+];
+
+function isLikelyOutOfScopeTopic(question) {
+  const q = question.toLowerCase();
+  return OUT_OF_SCOPE_TOPIC_KEYWORDS.some((kw) => q.includes(kw));
+}
+
+// Gộp logic chạy 3 hàm structured lookup theo đúng thứ tự ưu tiên (dùng
+// chung cho Model 1 và nhánh structured của Model 4 — trước đây 2 nơi
+// lặp lại y hệt đoạn code này, giờ gộp về 1 chỗ để tránh lệch nhau khi sửa).
+async function runStructuredLookup(question, provinceId) {
+  if (isLikelyOutOfScopeTopic(question)) return null;
+
+  const aggIntent = isAggregationIntent(question);
+  return aggIntent
+    ? (await tryNewUnitMatch(question, provinceId)) ||
+        (await tryOldUnitMatch(question, provinceId)) ||
+        (await tryOldProvinceMatch(question))
+    : (await tryOldUnitMatch(question, provinceId)) ||
+        (await tryNewUnitMatch(question, provinceId)) ||
+        (await tryOldProvinceMatch(question));
 }
 
 async function tryOldUnitMatch(question, provinceId = null) {
@@ -377,8 +435,6 @@ const SCOPE_KEYWORDS = [
   "Cà Mau",
   "Bạc Liêu",
 ];
-
-// ============ MODEL 2: NAIVE RAG (vector-only) ============
 
 async function tryVectorSearch(question, provider = "gemini") {
   const embedding = await getEmbedding(question);
@@ -678,14 +734,9 @@ async function tryHybridRetrieval(question) {
 }
 
 async function tryModularRAG(question, provider = "gemini", provinceId = null) {
-  const aggIntent = isAggregationIntent(question);
-  const structuredResult = aggIntent
-    ? (await tryNewUnitMatch(question, provinceId)) ||
-      (await tryOldUnitMatch(question, provinceId)) ||
-      (await tryOldProvinceMatch(question))
-    : (await tryOldUnitMatch(question, provinceId)) ||
-      (await tryNewUnitMatch(question, provinceId)) ||
-      (await tryOldProvinceMatch(question));
+  // MỚI: gọi qua runStructuredLookup() thay vì lặp lại logic 3 hàm tra cứu
+  // + đã có sẵn bộ lọc isLikelyOutOfScopeTopic() ở trong đó.
+  const structuredResult = await runStructuredLookup(question, provinceId);
   if (structuredResult) {
     return {
       ...structuredResult,
@@ -807,20 +858,22 @@ async function ask(req, res) {
     let result;
 
     if (selectedModel === "rule_based") {
-      const aggIntent = isAggregationIntent(question);
-      result = aggIntent
-        ? (await tryNewUnitMatch(question, provinceId)) ||
-          (await tryOldUnitMatch(question, provinceId)) ||
-          (await tryOldProvinceMatch(question))
-        : (await tryOldUnitMatch(question, provinceId)) ||
-          (await tryNewUnitMatch(question, provinceId)) ||
-          (await tryOldProvinceMatch(question));
+      // MỚI: gọi qua runStructuredLookup() thay vì lặp lại logic 3 hàm tra cứu
+      result = await runStructuredLookup(question, provinceId);
     } else if (selectedModel === "naive_rag") {
       result = await tryVectorSearch(question, provider);
     } else if (selectedModel === "advanced_rag") {
       try {
         result = await tryAdvancedRAG(question, provider, provinceId);
       } catch (err) {
+        // MỚI — DEBUG TẠM THỜI
+        console.error(
+          "RAW ERROR (advanced_rag):",
+          err?.response?.status,
+          err?.statusCode,
+          err?.message,
+          JSON.stringify(err?.body || err?.response?.data || {}),
+        );
         if (isConnectionError(err)) {
           return res.status(503).json({
             success: false,

@@ -4,21 +4,29 @@ const path = require("path");
 const axios = require("axios");
 const XLSX = require("xlsx");
 
-// ============ CẤU HÌNH — ĐỔI 2 DÒNG NÀY GIỮA CÁC LƯỢT CHẠY ============
-const LLM_PROVIDER = "cohere";
+// ============ CẤU HÌNH — ĐỔI GIỮA CÁC LƯỢT CHẠY ============
+const LLM_PROVIDER = process.env.LLM_PROVIDER_OVERRIDE || "cohere"; // "gemini" | "cohere"
 const MODELS_TO_RUN = [
-  // "rule_based",
-  // "naive_rag",
+  "rule_based",
+  "naive_rag",
   "advanced_rag",
-  // "modular_rag",
+  "modular_rag",
 ];
 const TEST_SET_PATH = path.join(__dirname, "../data/test_matrix_TPHCM.xlsx");
 // const TEST_SET_PATH = path.join(__dirname, "../data/pilot_test_set.xlsx");
-const questions =
-  LLM_PROVIDER === "groq"
-    ? readTestSet(TEST_SET_PATH).slice(0, GROQ_SAMPLE_SIZE)
-    : readTestSet(TEST_SET_PATH);
-const GROQ_SAMPLE_SIZE = 30; // giữ nguyên quy mô pilot cho Groq, tránh chạm TPD
+
+// Chạy 1 khoảng con của bộ câu hỏi (dùng khi quota provider không đủ chạy
+// hết trong 1 ngày). Không set 2 biến env này -> chạy full như bình thường.
+// PowerShell ví dụ chạy 100 câu đầu:
+//   $env:QUESTION_START="0"; $env:QUESTION_END="100"; node scripts/runBatchTest.js
+// Ngày hôm sau, chạy phần còn lại:
+//   $env:QUESTION_START="100"; $env:QUESTION_END="161"; node scripts/runBatchTest.js
+const QUESTION_START = process.env.QUESTION_START
+  ? Number(process.env.QUESTION_START)
+  : null;
+const QUESTION_END = process.env.QUESTION_END
+  ? Number(process.env.QUESTION_END)
+  : null;
 
 const API_BASE_URL = "http://localhost:3000/api/v1";
 const RESULTS_DIR = path.join(
@@ -28,12 +36,39 @@ const RESULTS_DIR = path.join(
 const SUMMARY_PATH = path.join(RESULTS_DIR, "timing_summary.xlsx");
 
 const CONCURRENCY = 4; // chỉ áp dụng cho rule_based (không gọi AI)
-// Riêng advanced_rag cần giãn cách gấp đôi vì gọi LLM 2 lần/câu
-const REQUEST_DELAY_MS_BY_MODEL = {
-  naive_rag: LLM_PROVIDER === "groq" ? 15000 : 4500,
-  advanced_rag: LLM_PROVIDER === "groq" ? 45000 : 9000, // ước lượng thô, chờ số thật để chỉnh chính xác
-  modular_rag: LLM_PROVIDER === "groq" ? 8000 : 4500, // phần lớn structured_lookup, ít bị TPM ảnh hưởng
+
+// concurrency=3 cho naive_rag từng chạy sạch 1 lần (22/9, 0 lỗi) nhưng lần
+// khác lại gây 429 hàng loạt — tức bản thân số concurrency không phải chốt
+// chặn thật sự, giới hạn RPM mới là chốt chặn thật.
+//
+// Cohere: CHƯA CÓ DỮ LIỆU THẬT ở quy mô 161 câu (mới pilot 30 câu), nên cấu
+// hình cố tình THẬN TRỌNG hơn Gemini — gần như tuần tự. Chỉ nới ra (tăng
+// concurrency/RPM) sau khi 1 lượt full chạy sạch không có RATE_LIMITED.
+const PROVIDER_PROFILES = {
+  gemini: {
+    concurrency: { naive_rag: 2, advanced_rag: 2, modular_rag: 4 },
+    rpm: { naive_rag: 12, advanced_rag: 6, modular_rag: 20 },
+  },
+  cohere: {
+    concurrency: { naive_rag: 1, advanced_rag: 1, modular_rag: 2 },
+    rpm: { naive_rag: 8, advanced_rag: 4, modular_rag: 12 },
+  },
 };
+
+if (!PROVIDER_PROFILES[LLM_PROVIDER]) {
+  console.error(
+    `LLM_PROVIDER "${LLM_PROVIDER}" không hợp lệ. Chọn 1 trong: ${Object.keys(PROVIDER_PROFILES).join(", ")}`,
+  );
+  process.exit(1);
+}
+
+function getConcurrency(model) {
+  return PROVIDER_PROFILES[LLM_PROVIDER]?.concurrency[model] || 1;
+}
+function getRateLimitRpm(model) {
+  return PROVIDER_PROFILES[LLM_PROVIDER]?.rpm[model] || 8;
+}
+
 const DELAY_BETWEEN_MODELS_MS = 5000;
 
 // ============ ĐỌC BỘ CÂU HỎI TỪ FILE XLSX ============
@@ -54,7 +89,6 @@ function readTestSet(filePath) {
   const rows = XLSX.utils.sheet_to_json(sheet);
 
   return rows.map((row) => ({
-    // ID mới của test matrix
     id: row.test_id,
     test_id: row.test_id,
 
@@ -64,8 +98,7 @@ function readTestSet(filePath) {
 
     expected_answer: row.expected_answer,
 
-    // Không phải field gốc của Test Matrix,
-    // nhưng runner cũ cần field này.
+    // Không phải field gốc của Test Matrix, nhưng runner cũ cần field này.
     expected_branch: inferExpectedBranch(row.category),
 
     source_doc: "1685/NQ-UBTVQH15",
@@ -110,7 +143,7 @@ function inferExpectedBranch(category) {
   }
 }
 
-// ============ SIMPLE CONCURRENCY LIMITER (chỉ dùng cho rule_based) ============
+// ============ SIMPLE CONCURRENCY LIMITER ============
 function createLimiter(maxConcurrent) {
   let running = 0;
   const queue = [];
@@ -138,7 +171,23 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// ============ GỌI API 1 CÂU HỎI (có retry 1 lần nếu bị rate limit) ============
+// ============ RATE LIMITER THEO REQUEST/PHÚT ============
+// Khác với createLimiter (giới hạn số request ĐANG chạy song song), hàm này
+// giới hạn NHỊP KHỞI request mới — đúng thứ RPM của provider thật sự kiểm
+// soát. Nhiều request vẫn có thể đang "in-flight" cùng lúc, nhưng thời điểm
+// BẮT ĐẦU của mỗi request được giãn đều theo đúng requestsPerMinute.
+function createRateLimiter(requestsPerMinute) {
+  const minIntervalMs = 60000 / requestsPerMinute;
+  let nextSlot = Date.now();
+  return function schedule(fn) {
+    const myTurn = Math.max(nextSlot, Date.now());
+    nextSlot = myTurn + minIntervalMs;
+    const waitMs = myTurn - Date.now();
+    return (waitMs > 0 ? sleep(waitMs) : Promise.resolve()).then(fn);
+  };
+}
+
+// ============ GỌI API 1 CÂU HỎI (có retry nếu bị rate limit / service bận) ============
 async function callAskApi(
   question,
   model,
@@ -174,6 +223,17 @@ async function callAskApi(
       await sleep(waitMs);
       return callAskApi(question, model, provider, provinceId, attempt + 1);
     }
+    // SERVICE_UNAVAILABLE thường là embedding/rerank service cục bộ (FastAPI,
+    // 1 worker đồng bộ) bị nghẽn tạm thời khi nhiều request chạy đồng thời,
+    // KHÔNG phải lỗi vĩnh viễn như rate limit thật. Chờ ngắn hơn.
+    if (errorCode === "SERVICE_UNAVAILABLE" && attempt < MAX_RETRIES) {
+      const waitMs = 5000 * (attempt + 1);
+      console.log(
+        `    (service cục bộ bận, chờ ${Math.round(waitMs / 1000)}s, thử lại lần ${attempt + 1}/${MAX_RETRIES})`,
+      );
+      await sleep(waitMs);
+      return callAskApi(question, model, provider, provinceId, attempt + 1);
+    }
     return {
       success: false,
       answer: null,
@@ -202,6 +262,19 @@ function readJsonLines(filePath) {
 function normalizeAnswerText(s) {
   if (!s) return s;
   return s.replace(/[\u00a0\u202f\u2009\u2007\u2002\u2003]/g, " ");
+}
+
+function countAdminUnitMentions(answerText) {
+  if (!answerText) return 0;
+  // Cắt bỏ phần "theo <số nghị quyết>" để không đếm nhầm số hiệu văn bản
+  const mainPart = answerText.split(/,?\s*theo\s+/i)[0];
+  // LƯU Ý: không dùng \b quanh "và"/"cộng với" — \b của JS chỉ nhận biết
+  // ký tự ASCII [A-Za-z0-9_], nên với từ có dấu (à, ộ...) \b không khớp
+  // đúng ranh giới từ. Tách theo khoảng trắng bao quanh thay vì word-boundary.
+  const segments = mainPart.split(/,|\s+và\s+|\s+cộng với\s+/i);
+  const unitRegex = /^(Phường|Xã|Thị trấn|Đặc khu)\s+\S.*$/i;
+  const names = segments.map((s) => s.trim()).filter((s) => unitRegex.test(s));
+  return new Set(names.map((s) => s.toLowerCase())).size;
 }
 
 function evaluateAnswer(q, result) {
@@ -238,6 +311,24 @@ function evaluateAnswer(q, result) {
     return {
       pass: asksForContext,
       reason: asksForContext ? "PASS" : "DID_NOT_DISAMBIGUATE",
+    };
+  }
+
+  // ===== Count (T6) =====
+  if (q.category === "T6_count") {
+    if (!result.answer) {
+      return { pass: false, reason: "NO_ANSWER_FOR_COUNT" };
+    }
+    const expectedCount = Number(q.expected_count ?? q.must_contain);
+    const mentionedCount = countAdminUnitMentions(result.answer);
+    const literalDigitPresent = new RegExp(`\\b${expectedCount}\\b`).test(
+      answer,
+    );
+    const pass = mentionedCount === expectedCount || literalDigitPresent;
+    return {
+      pass,
+      reason: pass ? "PASS" : "COUNT_MISMATCH",
+      mentioned_count: mentionedCount,
     };
   }
 
@@ -342,15 +433,60 @@ async function runModel(model, questions, tempJsonlPath) {
       ),
     );
   } else {
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      const result = await callAskApi(q.question, model, LLM_PROVIDER, 1);
-      appendJsonLine(tempJsonlPath, buildResultRow(q, model, result));
-      if ((i + 1) % 10 === 0 || i + 1 === questions.length)
-        console.log(`  [${model}] Đã xong ${i + 1}/${questions.length}`);
-      if (i < questions.length - 1) {
-        await sleep(REQUEST_DELAY_MS_BY_MODEL[model]);
-      }
+    // Chạy song song có giới hạn, kiểm soát bằng 3 lớp:
+    // (1) createLimiter: không quá N request chạy đồng thời
+    // (2) createRateLimiter: không quá M request KHỞI ĐỘNG mỗi phút
+    // (3) circuit breaker: nếu >=8/10 lần hoàn thành GẦN NHẤT đều lỗi, dừng
+    //     lên lịch các câu còn lại. Cần thiết vì đã quan sát thấy Cohere hết
+    //     quota rồi chạy tiếp 100+ câu lỗi liên tục vô ích.
+    const limit = createLimiter(getConcurrency(model));
+    const throttle = createRateLimiter(getRateLimitRpm(model));
+    const CIRCUIT_BREAKER_WINDOW = 10;
+    const CIRCUIT_BREAKER_ERROR_THRESHOLD = 8;
+    let recentResults = []; // true = thành công, false = lỗi
+    let circuitOpen = false;
+    let done = 0;
+    let skipped = 0;
+    await Promise.all(
+      questions.map((q) =>
+        limit(() =>
+          throttle(async () => {
+            if (circuitOpen) {
+              skipped++;
+              return;
+            }
+            const result = await callAskApi(q.question, model, LLM_PROVIDER, 1);
+            appendJsonLine(tempJsonlPath, buildResultRow(q, model, result));
+            done++;
+
+            recentResults.push(result.success);
+            if (recentResults.length > CIRCUIT_BREAKER_WINDOW)
+              recentResults.shift();
+            const recentErrorCount = recentResults.filter((s) => !s).length;
+            if (
+              !circuitOpen &&
+              recentResults.length === CIRCUIT_BREAKER_WINDOW &&
+              recentErrorCount >= CIRCUIT_BREAKER_ERROR_THRESHOLD
+            ) {
+              circuitOpen = true;
+              console.error(
+                `\n!!! DỪNG SỚM [${model}]: ${recentErrorCount}/${CIRCUIT_BREAKER_WINDOW} câu gần nhất đều lỗi ` +
+                  `(lỗi gần nhất: ${result.error}). Khả năng cao quota cạn/key sai — ` +
+                  `KIỂM TRA TRƯỚC KHI CHẠY TIẾP. Các câu chưa xử lý sẽ bị bỏ qua (không ` +
+                  `tính vào file kết quả), không phải lỗi — chạy lại sau khi khắc phục.`,
+              );
+            }
+
+            if (done % 10 === 0 || done === questions.length)
+              console.log(`  [${model}] Đã xong ${done}/${questions.length}`);
+          }),
+        ),
+      ),
+    );
+    if (skipped > 0) {
+      console.log(
+        `  [${model}] Đã bỏ qua ${skipped} câu do circuit breaker dừng sớm.`,
+      );
     }
   }
 
@@ -409,7 +545,7 @@ function convertJsonlToXlsx(jsonlPath, xlsxPath, sheetName) {
   XLSX.writeFile(workbook, xlsxPath);
 }
 
-// Ghi thêm 1 dòng vào bảng tổng hợp - CỘNG DỒN qua nhiều lần chạy để so sánh Gemini vs Cohere
+// Ghi thêm dòng vào bảng tổng hợp - CỘNG DỒN qua nhiều lần chạy để so sánh Gemini vs Cohere
 function appendSummaryRows(newRows) {
   let existingRows = [];
   if (fs.existsSync(SUMMARY_PATH)) {
@@ -437,7 +573,21 @@ function appendSummaryRows(newRows) {
 }
 
 // ============ MAIN ============
+async function waitForBackendReady(maxWaitMs = 60000) {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    try {
+      const r = await axios.get(`${API_BASE_URL}/health`, { timeout: 3000 });
+      if (r.status === 200) return;
+    } catch (_) {}
+    await sleep(2000);
+  }
+  console.error("Backend không sẵn sàng sau 60s. Dừng batch.");
+  process.exit(1);
+}
+
 async function warmUp() {
+  await waitForBackendReady();
   console.log("Đang warm-up model (embedding + rerank)...");
   try {
     await axios.post(
@@ -445,19 +595,15 @@ async function warmUp() {
       {
         question: "Phường Bến Nghé cũ giờ là gì?",
         model: "advanced_rag",
-        llm_provider: "gemini",
-        province_id: 1, // dùng provider bất kỳ, chỉ để load model vào RAM
+        llm_provider: LLM_PROVIDER,
+        province_id: 1,
       },
       { timeout: 120000 },
-    ); // timeout dài vì lần đầu luôn chậm nhất (cold start)
-  } catch (err) {
-    console.log(
-      "Warm-up xong (có thể lỗi nhẹ, không sao, mục đích chỉ để load model):",
-      err.message,
     );
+  } catch (err) {
+    console.log("Warm-up lỗi nhẹ (chỉ để load model):", err.message);
   }
-  console.log("Warm-up hoàn tất. Đợi 5 giây trước khi bắt đầu...");
-  await new Promise((r) => setTimeout(r, 5000));
+  await sleep(5000);
 }
 
 async function run() {
@@ -469,9 +615,19 @@ async function run() {
   if (!fs.existsSync(RESULTS_DIR))
     fs.mkdirSync(RESULTS_DIR, { recursive: true });
 
-  const questions = readTestSet(TEST_SET_PATH);
+  const allQuestions = readTestSet(TEST_SET_PATH);
+  const questions =
+    QUESTION_START !== null && QUESTION_END !== null
+      ? allQuestions.slice(QUESTION_START, QUESTION_END)
+      : allQuestions;
+
+  if (QUESTION_START !== null || QUESTION_END !== null) {
+    console.log(
+      `CHẠY 1 PHẦN: câu ${QUESTION_START ?? 0} - ${QUESTION_END ?? allQuestions.length} (trong tổng ${allQuestions.length} câu).`,
+    );
+  }
   console.log(
-    `Đã đọc ${questions.length} câu hỏi. Provider: ${LLM_PROVIDER}. Model: ${MODELS_TO_RUN.join(", ")}`,
+    `Đã đọc ${questions.length} câu hỏi (tổng bộ test: ${allQuestions.length}). Provider: ${LLM_PROVIDER}. Model: ${MODELS_TO_RUN.join(", ")}`,
   );
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -510,9 +666,7 @@ async function run() {
   console.log(
     `Bảng tổng hợp so sánh (cộng dồn qua các lượt chạy): ${SUMMARY_PATH}`,
   );
-  console.log(
-    "Mở file timing_summary.xlsx để so sánh Gemini (và Cohere nếu chạy thêm).",
-  );
+  console.log("Mở file timing_summary.xlsx để so sánh Gemini và Cohere.");
 }
 
 run();
