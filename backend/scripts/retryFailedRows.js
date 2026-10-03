@@ -18,7 +18,8 @@ const axios = require("axios");
 const XLSX = require("xlsx");
 
 const API_BASE_URL = "http://localhost:3000/api/v1";
-const PROVINCE_ID = 1; // mặc định TP.HCM, khớp với runBatchTest.js gốc
+const provinceId = row.province_id || Number(process.env.PROVINCE_ID || 1);
+const apiResult = await callAskApi(row.question, model, provider, provinceId);
 const MAX_RETRIES = 3;
 const DELAY_BETWEEN_CALLS_MS = 4500; // giãn cách giữa các lần gọi, an toàn RPM
 

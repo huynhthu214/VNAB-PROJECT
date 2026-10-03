@@ -3,7 +3,11 @@ const XLSX = require("xlsx");
 const { Pool } = require("pg");
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const MERGE_TYPE_MAP = { "toàn bộ": "toan_bo", "một phần": "mot_phan" };
+const MERGE_TYPE_MAP = {
+  "toàn bộ": "toan_bo",
+  "một phần": "mot_phan",
+  "không sắp xếp": "toan_bo",
+};
 
 // ============================================================================
 // Chuẩn hóa tên tỉnh để so khớp giữa các sheet/tỉnh khác nhau, bất kể cách viết
@@ -175,6 +179,9 @@ async function importData(client, filePath) {
 
     // ---- Xác định tỉnh CŨ của dòng này (tự động, không hard-code) ----
     const districtKey = (r.old_parent || "").trim();
+    const parentClean = String(r.old_parent || "")
+      .replace(/\s*\(\d+\)\s*$/, "")
+      .trim();
     const provinceOldCore = districtToProvinceCore[districtKey];
     const provinceOldFkName = provinceOldCore
       ? provinceOldNameMap[provinceOldCore]
@@ -220,7 +227,7 @@ async function importData(client, filePath) {
       [
         r.old_unit_name,
         oldType,
-        r.old_parent,
+        parentClean,
         provinceOldLabel,
         provinceOldFkName,
       ],
@@ -230,7 +237,7 @@ async function importData(client, filePath) {
     if (!oldUnitId) {
       const { rows: found } = await client.query(
         `SELECT id FROM admin_units_old WHERE name=$1 AND parent_name=$2 LIMIT 1`,
-        [r.old_unit_name, r.old_parent],
+        [r.old_unit_name, parentClean],
       );
       oldUnitId = found[0]?.id;
     }

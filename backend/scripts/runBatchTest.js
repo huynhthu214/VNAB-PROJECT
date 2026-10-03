@@ -12,7 +12,10 @@ const MODELS_TO_RUN = [
   "advanced_rag",
   "modular_rag",
 ];
-const TEST_SET_PATH = path.join(__dirname, "../data/test_matrix_TPHCM.xlsx");
+const PROVINCE_ID = Number(process.env.PROVINCE_ID || 1);
+const TEST_SET_PATH =
+  process.env.TEST_SET_PATH ||
+  path.join(__dirname, "../data/test_matrix_TPHCM.xlsx");
 // const TEST_SET_PATH = path.join(__dirname, "../data/pilot_test_set.xlsx");
 
 // Chạy 1 khoảng con của bộ câu hỏi (dùng khi quota provider không đủ chạy
@@ -29,10 +32,14 @@ const QUESTION_END = process.env.QUESTION_END
   : null;
 
 const API_BASE_URL = "http://localhost:3000/api/v1";
-const RESULTS_DIR = path.join(
+const RESULTS_ROOT = path.join(
   __dirname,
   "../data/batch_results/official_batch",
 );
+const RESULTS_DIR =
+  PROVINCE_ID === 1
+    ? RESULTS_ROOT
+    : path.join(RESULTS_ROOT, `province_${PROVINCE_ID}`);
 const SUMMARY_PATH = path.join(RESULTS_DIR, "timing_summary.xlsx");
 
 const CONCURRENCY = 4; // chỉ áp dụng cho rule_based (không gọi AI)
@@ -75,8 +82,11 @@ const DELAY_BETWEEN_MODELS_MS = 5000;
 function readTestSet(filePath) {
   const workbook = XLSX.readFile(filePath);
 
-  // Dùng sheet TestCases_150 của test_matrix_TPHCM.xlsx
-  const sheet = workbook.Sheets["TestCases_150"];
+  const sheetName =
+    workbook.SheetNames.find((n) => n.startsWith("TestCases")) ||
+    workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) throw new Error("Không tìm thấy sheet TestCases trong test set.");
   // const sheet = workbook.Sheets["PilotSet"]; // thay vì "TestCases_150"
 
   if (!sheet) {
@@ -390,6 +400,7 @@ function buildResultRow(q, model, result) {
 
     model,
     llm_provider: LLM_PROVIDER,
+    province_id: PROVINCE_ID,
 
     answer_type: result.answer_type,
     answer: result.answer,
@@ -424,7 +435,12 @@ async function runModel(model, questions, tempJsonlPath) {
     await Promise.all(
       questions.map((q) =>
         limit(async () => {
-          const result = await callAskApi(q.question, model, LLM_PROVIDER, 1);
+          const result = await callAskApi(
+            q.question,
+            model,
+            LLM_PROVIDER,
+            PROVINCE_ID,
+          );
           appendJsonLine(tempJsonlPath, buildResultRow(q, model, result));
           done++;
           if (done % 10 === 0 || done === questions.length)
@@ -455,7 +471,12 @@ async function runModel(model, questions, tempJsonlPath) {
               skipped++;
               return;
             }
-            const result = await callAskApi(q.question, model, LLM_PROVIDER, 1);
+            const result = await callAskApi(
+              q.question,
+              model,
+              LLM_PROVIDER,
+              PROVINCE_ID,
+            );
             appendJsonLine(tempJsonlPath, buildResultRow(q, model, result));
             done++;
 
@@ -494,6 +515,7 @@ async function runModel(model, questions, tempJsonlPath) {
   const rows = readJsonLines(tempJsonlPath);
   const stats = {
     provider: LLM_PROVIDER,
+    province_id: PROVINCE_ID,
     model,
     total_questions: rows.length,
     success_count: rows.filter((r) => r.success).length,
@@ -596,7 +618,7 @@ async function warmUp() {
         question: "Phường Bến Nghé cũ giờ là gì?",
         model: "advanced_rag",
         llm_provider: LLM_PROVIDER,
-        province_id: 1,
+        province_id: PROVINCE_ID,
       },
       { timeout: 120000 },
     );

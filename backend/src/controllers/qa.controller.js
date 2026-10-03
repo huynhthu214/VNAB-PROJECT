@@ -800,6 +800,14 @@ ${context}`;
 }
 
 // ============ POST /qa/ask ============
+let validProvinceIdsCache = null;
+async function getValidProvinceIds() {
+  if (!validProvinceIdsCache) {
+    const { rows } = await pool.query("SELECT id FROM provinces_new");
+    validProvinceIdsCache = rows.map((r) => Number(r.id));
+  }
+  return validProvinceIdsCache;
+}
 
 async function ask(req, res) {
   try {
@@ -819,8 +827,7 @@ async function ask(req, res) {
     }
     const provider = llm_provider || "gemini"; // mặc định khi không truyền, KHÔNG fallback khi truyền sai
 
-    // province_id ứng với 8 tab tỉnh/thành trên frontend (= id trong bảng provinces_new)
-    const VALID_PROVINCE_IDS = [1, 7, 9, 11, 14, 16, 18, 20];
+    const VALID_PROVINCE_IDS = await getValidProvinceIds();
     let provinceId = null;
     if (province_id !== undefined && province_id !== null) {
       provinceId = Number(province_id);
