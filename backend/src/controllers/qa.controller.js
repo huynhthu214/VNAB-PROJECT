@@ -3,8 +3,10 @@ const { success, fail } = require("../utils/response");
 const axios = require("axios");
 const {
   callLLM,
+  PROVIDERS,
   ServiceUnavailableError,
   RateLimitError,
+  isConnectionError,
 } = require("../services/llmProviders");
 
 function extractKhoan(notes) {
@@ -23,11 +25,63 @@ function buildSource(row) {
 
 async function getEmbedding(text) {
   try {
-    const res = await axios.post("http://localhost:8001/embed", { text });
+    const res = await axios.post(
+      "http://localhost:8001/embed",
+      { text },
+      { timeout: 30000 },
+    );
     return res.data.embedding;
   } catch (err) {
     if (isConnectionError(err)) {
       throw new ServiceUnavailableError("Không kết nối được service embedding");
+    }
+    throw err;
+  }
+}
+
+async function rewriteQuestion(question, provider = "gemini") {
+  const systemPrompt = `Bạn là trợ lý chuẩn hóa câu hỏi tiếng Việt về địa giới hành chính.
+Viết lại câu hỏi sau cho rõ nghĩa hơn: sửa lỗi chính tả, thêm dấu tiếng Việt nếu thiếu,
+làm rõ ý mơ hồ. GIỮ NGUYÊN Ý GỐC, không thêm thông tin không có trong câu hỏi.
+
+TUYỆT ĐỐI KHÔNG được đổi CẤP hành chính đang được hỏi. Nếu câu gốc hỏi
+đơn vị này "thuộc/chia thành những ĐƠN VỊ HÀNH CHÍNH (phường/xã) nào",
+câu viết lại PHẢI vẫn hỏi ở cấp phường/xã — không được đổi thành hỏi
+"thuộc TỈNH/THÀNH PHỐ nào". Chỉ đổi cấp hỏi khi câu gốc tự nó đã hỏi ở
+cấp tỉnh/thành.
+
+Chỉ trả về câu hỏi đã viết lại, không giải thích gì thêm.`;
+
+  const { text, input_tokens, output_tokens } = await callLLM(
+    provider,
+    systemPrompt,
+    question,
+  );
+  return {
+    rewritten: text?.trim() || question,
+    input_tokens: input_tokens ?? 0,
+    output_tokens: output_tokens ?? 0,
+  };
+}
+
+async function rerankChunks(question, chunks, topK = 5) {
+  try {
+    const res = await axios.post(
+      "http://localhost:8001/rerank",
+      {
+        query: question,
+        documents: chunks.map((c) => c.content),
+      },
+      { timeout: 90000 },
+    );
+    const { scores } = res.data;
+    return chunks
+      .map((c, i) => ({ ...c, rerank_score: scores[i] }))
+      .sort((a, b) => b.rerank_score - a.rerank_score)
+      .slice(0, topK);
+  } catch (err) {
+    if (isConnectionError(err)) {
+      throw new ServiceUnavailableError("Không kết nối được rerank service");
     }
     throw err;
   }
@@ -43,12 +97,16 @@ async function logQa(
   routingDecision,
   confidence,
   responseTimeMs,
+  rewrittenQuestion = null,
+  rerankTopScore = null,
+  inputTokens = null,
+  outputTokens = null,
 ) {
   try {
     const { rows } = await pool.query(
-      `INSERT INTO qa_logs (session_id, question, answer, answer_type, model_used, llm_provider, routing_decision, confidence, response_time_ms)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id`,
+      `INSERT INTO qa_logs (session_id, question, answer, answer_type, model_used, llm_provider, routing_decision, confidence, response_time_ms, rewritten_question, rerank_top_score, input_tokens, output_tokens)
+   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+   RETURNING id`,
       [
         sessionId || null,
         question,
@@ -59,6 +117,10 @@ async function logQa(
         routingDecision,
         confidence,
         responseTimeMs,
+        rewrittenQuestion,
+        rerankTopScore,
+        inputTokens,
+        outputTokens,
       ],
     );
     return rows[0].id;
@@ -68,15 +130,82 @@ async function logQa(
   }
 }
 // ============ MODEL 1: RULE-BASED (structured lookup) ============
+// Nhận diện câu hỏi đang hỏi theo chiều "mới -> cũ" (hình thành từ, gồm những đơn vị...)
+// để ưu tiên gọi tryNewUnitMatch trước, tránh trường hợp tên đơn vị mới trùng tên
+// 1 đơn vị cũ thành phần (VD "Phường Bến Thành") khiến tryOldUnitMatch trả lời nhầm chiều.
+function isAggregationIntent(question) {
+  const q = question.toLowerCase();
+  return (
+    q.includes("được hình thành từ") ||
+    q.includes("hình thành từ") ||
+    q.includes("sáp nhập từ") ||
+    q.includes("được sắp xếp từ") ||
+    q.includes("gồm những đơn vị") ||
+    (q.includes("trước sắp xếp") && q.includes("gồm"))
+  );
+}
 
-async function tryOldUnitMatch(question) {
+// ============ MỚI: chặn false-positive structured lookup ============
+// Vấn đề đã phát hiện qua thực nghiệm (Chương 4): tryOldUnitMatch/tryNewUnitMatch
+// so khớp SUBSTRING tên đơn vị trong câu hỏi, không xét ý định câu hỏi. Nên câu
+// như "Giá đất của Phường 1 hiện nay là bao nhiêu?" khớp "Phường 1" và bị trả lời
+// nhầm bằng thông tin sáp nhập, dù câu hỏi thực chất về giá đất (ngoài phạm vi).
+// Đây LÀ danh sách CHẶN theo chủ đề rõ ràng KHÔNG liên quan ánh xạ hành chính,
+// không phải danh sách YÊU CẦU — cách này an toàn hơn (ít rủi ro chặn nhầm câu
+// hỏi hợp lệ) so với việc bắt buộc câu hỏi phải chứa từ khoá "thuộc/sáp nhập/...",
+// vì bộ câu hỏi kiểm thử có nhiều cách diễn đạt (kể cả không dấu ở nhóm T7) mà ta
+// không kiểm soát hết được.
+const OUT_OF_SCOPE_TOPIC_KEYWORDS = [
+  "giá đất",
+  "giá nhà",
+  "giá bất động sản",
+  "bất động sản",
+  "trường đại học",
+  "trường học",
+  "trường cấp",
+  "bệnh viện",
+  "thời tiết",
+  "dân số hiện tại",
+  "giá vàng",
+  "giá xăng",
+  "quán ăn",
+  "món ăn",
+  "du lịch",
+  "khách sạn",
+  "tuyển sinh",
+];
+
+function isLikelyOutOfScopeTopic(question) {
+  const q = question.toLowerCase();
+  return OUT_OF_SCOPE_TOPIC_KEYWORDS.some((kw) => q.includes(kw));
+}
+
+// Gộp logic chạy 3 hàm structured lookup theo đúng thứ tự ưu tiên (dùng
+// chung cho Model 1 và nhánh structured của Model 4 — trước đây 2 nơi
+// lặp lại y hệt đoạn code này, giờ gộp về 1 chỗ để tránh lệch nhau khi sửa).
+async function runStructuredLookup(question, provinceId) {
+  if (isLikelyOutOfScopeTopic(question)) return null;
+
+  const aggIntent = isAggregationIntent(question);
+  return aggIntent
+    ? (await tryNewUnitMatch(question, provinceId)) ||
+        (await tryOldUnitMatch(question, provinceId)) ||
+        (await tryOldProvinceMatch(question))
+    : (await tryOldUnitMatch(question, provinceId)) ||
+        (await tryNewUnitMatch(question, provinceId)) ||
+        (await tryOldProvinceMatch(question));
+}
+
+async function tryOldUnitMatch(question, provinceId = null) {
   const { rows } = await pool.query(
     `SELECT o.id AS old_id, o.name AS old_name, o.parent_name, o.province_old,
-            n.name AS new_name, m.merge_type,
+            n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
+            m.merge_type,
             d.doc_code, d.title AS doc_title, d.source_url, m.notes
      FROM admin_units_old o
      JOIN unit_mapping m ON m.old_unit_id = o.id
      JOIN admin_units_new n ON n.id = m.new_unit_id
+     JOIN provinces_new pn ON pn.id = n.province_new_id
      LEFT JOIN legal_documents d ON d.id = m.decision_document_id
      WHERE $1 ILIKE '%' || o.name || '%'
      ORDER BY length(o.name) DESC`,
@@ -86,9 +215,37 @@ async function tryOldUnitMatch(question) {
 
   const bestOldName = rows[0].old_name;
   let sameNameRows = rows.filter((r) => r.old_name === bestOldName);
+
+  // ====== MỚI: lọc theo tab tỉnh đang chọn (nếu có) ======
+  // Vì tên đơn vị hành chính trùng nhau rất phổ biến giữa các tỉnh (VD "Phường 16"
+  // tồn tại ở nhiều quận khác nhau), phải thu hẹp về đúng phạm vi tab trước khi
+  // xét tiếp logic mơ hồ theo quận/huyện bên dưới - tránh trộn lẫn dữ liệu khác tỉnh.
+  if (provinceId) {
+    const inScope = sameNameRows.filter(
+      (r) => r.province_new_id === provinceId,
+    );
+    if (inScope.length === 0) {
+      const otherProvinces = [
+        ...new Set(sameNameRows.map((r) => r.new_province_name)),
+      ];
+      return {
+        answer: `Không tìm thấy "${bestOldName}" trong phạm vi tỉnh/thành đang chọn. Có đơn vị cùng tên thuộc: ${otherProvinces.join(", ")}. Vui lòng chuyển sang tab tương ứng để tra cứu.`,
+        answer_type: "structured_lookup",
+        answer_level: "unit",
+        model_used: "rule_based",
+        confidence: 0.5,
+        sources: [],
+        suggested_provinces: [
+          ...new Set(sameNameRows.map((r) => r.province_new_id)),
+        ],
+      };
+    }
+    sameNameRows = inScope;
+  }
+
   let distinctOldIds = [...new Set(sameNameRows.map((r) => r.old_id))];
 
-  // Nếu trùng tên nhiều nơi -> thử lọc thêm theo tên quận/huyện NẾU câu hỏi có nhắc tới
+  // Nếu trùng tên nhiều nơi (trong CÙNG tab, hoặc không chọn tab) -> thử lọc thêm theo tên quận/huyện NẾU câu hỏi có nhắc tới
   if (distinctOldIds.length > 1) {
     const questionLower = question.toLowerCase();
     const filteredByParent = sameNameRows.filter(
@@ -143,11 +300,13 @@ async function tryOldUnitMatch(question) {
   };
 }
 
-async function tryNewUnitMatch(question) {
+async function tryNewUnitMatch(question, provinceId = null) {
   const { rows } = await pool.query(
-    `SELECT n.name AS new_name, o.name AS old_name, m.merge_type,
+    `SELECT n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
+            o.name AS old_name, o.parent_name, m.merge_type,
             d.doc_code, d.title AS doc_title, d.source_url, m.notes
      FROM admin_units_new n
+     JOIN provinces_new pn ON pn.id = n.province_new_id
      JOIN unit_mapping m ON m.new_unit_id = n.id
      JOIN admin_units_old o ON o.id = m.old_unit_id
      LEFT JOIN legal_documents d ON d.id = m.decision_document_id
@@ -158,14 +317,57 @@ async function tryNewUnitMatch(question) {
   if (rows.length === 0) return null;
 
   const bestNewName = rows[0].new_name;
-  const matched = rows.filter((r) => r.new_name === bestNewName);
+  let matched = rows.filter((r) => r.new_name === bestNewName);
+
+  // ====== MỚI: lọc theo tab tỉnh, hoặc phát hiện trùng tên đa tỉnh ======
+  // Đây là chỗ từng gây lỗi nghiêm trọng: tên đơn vị mới trùng nhau giữa các
+  // tỉnh (VD "Phường Bình Tân" tồn tại ở cả TP.HCM lẫn tỉnh khác) trước đây bị
+  // gộp chung thành 1 câu trả lời sai. Giờ tách rõ theo từng tỉnh trước khi trả lời.
+  if (provinceId) {
+    const inScope = matched.filter((r) => r.province_new_id === provinceId);
+    if (inScope.length === 0) {
+      const otherProvinces = [
+        ...new Set(matched.map((r) => r.new_province_name)),
+      ];
+      return {
+        answer: `Không tìm thấy "${bestNewName}" trong phạm vi tỉnh/thành đang chọn. Có đơn vị cùng tên thuộc: ${otherProvinces.join(", ")}. Vui lòng chuyển sang tab tương ứng để tra cứu.`,
+        answer_type: "structured_lookup",
+        answer_level: "unit",
+        model_used: "rule_based",
+        confidence: 0.5,
+        sources: [],
+        suggested_provinces: [
+          ...new Set(matched.map((r) => r.province_new_id)),
+        ],
+      };
+    }
+    matched = inScope;
+  } else {
+    const distinctProvinces = [
+      ...new Set(matched.map((r) => r.province_new_id)),
+    ];
+    if (distinctProvinces.length > 1) {
+      const options = distinctProvinces.map(
+        (pid) =>
+          matched.find((x) => x.province_new_id === pid).new_province_name,
+      );
+      return {
+        answer: `Có nhiều đơn vị hành chính cùng tên "${bestNewName}" ở các tỉnh/thành khác nhau: ${options.join(", ")}. Vui lòng chọn tab tỉnh tương ứng để tra cứu chính xác.`,
+        answer_type: "structured_lookup",
+        answer_level: "unit",
+        model_used: "rule_based",
+        confidence: 0.6,
+        sources: [],
+      };
+    }
+  }
 
   const toanBo = matched
     .filter((r) => r.merge_type === "toan_bo")
-    .map((r) => r.old_name);
+    .map((r) => `${r.old_name} (${r.parent_name})`);
   const motPhan = matched
     .filter((r) => r.merge_type === "mot_phan")
-    .map((r) => r.old_name);
+    .map((r) => `${r.old_name} (${r.parent_name})`);
 
   let parts = [];
   if (toanBo.length) parts.push(`toàn bộ ${toanBo.join(", ")}`);
@@ -210,13 +412,28 @@ async function tryOldProvinceMatch(question) {
 }
 
 // ============ MODEL 2: NAIVE RAG (vector-only) ============
-
 const SCOPE_KEYWORDS = [
   "Hồ Chí Minh",
   "TP.HCM",
   "Bình Dương",
   "Bà Rịa",
   "Vũng Tàu",
+  "An Giang",
+  "Kiên Giang",
+  "Tây Ninh",
+  "Long An",
+  "Vĩnh Long",
+  "Bến Tre",
+  "Trà Vinh",
+  "Đồng Nai",
+  "Bình Phước",
+  "Cần Thơ",
+  "Hậu Giang",
+  "Sóc Trăng",
+  "Đồng Tháp",
+  "Tiền Giang",
+  "Cà Mau",
+  "Bạc Liêu",
 ];
 
 async function tryVectorSearch(question, provider = "gemini") {
@@ -229,7 +446,7 @@ async function tryVectorSearch(question, provider = "gemini") {
   const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
 
   const { rows } = await pool.query(
-    `SELECT c.content, d.doc_code, d.title, d.source_url,
+    `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
             1 - (c.embedding <=> $1) AS similarity
      FROM document_chunks c
      JOIN legal_documents d ON d.id = c.document_id
@@ -239,33 +456,48 @@ async function tryVectorSearch(question, provider = "gemini") {
     [vectorLiteral, ...scopeParams],
   );
 
-  const relevant = rows.filter((r) => r.similarity > 0.5);
+  const relevant = rows.filter((r) => r.similarity > 0.4); // Giảm nhẹ ngưỡng similarity xuống 0.4 để an toàn
   if (relevant.length === 0) return null;
 
   const context = relevant.map((r) => r.content).join("\n---\n");
   const systemPrompt = `Bạn là trợ lý tra cứu địa giới hành chính TP.HCM sau sắp xếp (1/7/2025).
 Chỉ trả lời dựa trên đoạn văn bản được cung cấp dưới đây, không dùng kiến thức ngoài đoạn văn bản này.
+Trả lời bằng 1 câu hoàn chỉnh, có chủ ngữ - vị ngữ rõ ràng, nêu tên đơn vị cũ, tên đơn vị mới,
+và số hiệu văn bản pháp lý liên quan (VD: "Phường X (cũ) nay thuộc Phường Y, theo Nghị quyết ...").
 Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, PHẢI trả lời đúng và chỉ đúng chuỗi: KHONG_CO_DU_LIEU
 
 Đoạn văn bản:
 ${context}`;
 
-  const llmAnswer = await callLLM(provider, systemPrompt, question);
+  const {
+    text: llmAnswer,
+    input_tokens,
+    output_tokens,
+  } = await callLLM(provider, systemPrompt, question);
   if (!llmAnswer || typeof llmAnswer !== "string") {
     console.error(
       `Provider ${provider} trả về giá trị không hợp lệ:`,
       llmAnswer,
     );
-    return null; // rơi xuống NO_ANSWER_FOUND thay vì crash
+    return null;
   }
-  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU") return null;
+  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU") {
+    return {
+      no_answer: true,
+      model_used: "naive_rag",
+      input_tokens,
+      output_tokens,
+    };
+  }
+
   const uniqueSources = [
     ...new Map(
       relevant.map((r) => [
-        r.doc_code,
+        r.doc_code + (r.section_label || ""),
         {
           document_id: r.doc_code,
           title: r.title,
+          section: r.section_label || null,
           source_url: r.source_url,
         },
       ]),
@@ -279,11 +511,158 @@ ${context}`;
     model_used: "naive_rag",
     llm_provider: provider,
     confidence: Math.max(...relevant.map((r) => r.similarity)),
+    input_tokens,
+    output_tokens,
     sources: uniqueSources,
   };
 }
 
-// ============ MODEL 3: MODULAR RAG (router + hybrid retrieval) ============
+// ============ MODEL 3: ADVANCED RAG (query rewriting + rerank) ============
+
+async function vectorSearchTopN(question, topN = 10, provinceId = null) {
+  const embedding = await getEmbedding(question);
+  const vectorLiteral = `[${embedding.join(",")}]`;
+
+  if (provinceId) {
+    const scoped = await pool.query(
+      `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
+              1 - (c.embedding <=> $1) AS similarity
+       FROM document_chunks c
+       JOIN legal_documents d ON d.id = c.document_id
+       WHERE c.province_new_id = $3
+       ORDER BY c.embedding <=> $1
+       LIMIT $2`,
+      [vectorLiteral, topN, provinceId],
+    );
+    if (scoped.rows.length > 0) return scoped.rows;
+    // Không có chunk nào được gán đúng tab này -> rơi xuống tìm không giới hạn bên dưới
+  }
+
+  const scopeFilter = SCOPE_KEYWORDS.map(
+    (_, i) => `c.content ILIKE $${i + 3}`,
+  ).join(" OR ");
+  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
+
+  const { rows } = await pool.query(
+    `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
+            1 - (c.embedding <=> $1) AS similarity
+     FROM document_chunks c
+     JOIN legal_documents d ON d.id = c.document_id
+     WHERE (${scopeFilter})
+     ORDER BY c.embedding <=> $1
+     LIMIT $2`,
+    [vectorLiteral, topN, ...scopeParams],
+  );
+
+  return rows;
+}
+
+const RERANK_THRESHOLD = 0.9;
+// Ngưỡng riêng cho chunk tổng hợp chiều mới->cũ (SYNTHETIC-NEW2OLD) — CrossEncoder
+// chấm điểm thấp hệ thống cho loại chunk này do khác văn phong câu hỏi, dù nội
+// dung đúng chủ đề. Đã hiệu chỉnh từ pilot test (điểm quan sát 0.46-0.90).
+const RERANK_THRESHOLD_NEW2OLD = 0.45;
+
+async function tryAdvancedRAG(
+  question,
+  provider = "gemini",
+  provinceId = null,
+) {
+  const rw = await rewriteQuestion(question, provider);
+  const rewrittenQuestion = rw.rewritten;
+  let totalInputTokens = rw.input_tokens;
+  let totalOutputTokens = rw.output_tokens;
+
+  const topN = await vectorSearchTopN(rewrittenQuestion, 20, provinceId);
+  if (topN.length === 0) {
+    return {
+      no_answer: true,
+      model_used: "advanced_rag",
+      rewritten_question: rewrittenQuestion,
+      rerank_top_score: null,
+      input_tokens: totalInputTokens,
+      output_tokens: totalOutputTokens,
+    };
+  }
+
+  const reranked = await rerankChunks(rewrittenQuestion, topN, 12);
+
+  const topChunk = reranked[0];
+  const effectiveThreshold =
+    topChunk?.doc_code === "SYNTHETIC-NEW2OLD"
+      ? RERANK_THRESHOLD_NEW2OLD
+      : RERANK_THRESHOLD;
+
+  if (!topChunk || topChunk.rerank_score < effectiveThreshold) {
+    return {
+      no_answer: true,
+      model_used: "advanced_rag",
+      rewritten_question: rewrittenQuestion,
+      rerank_top_score: topChunk?.rerank_score ?? null,
+      input_tokens: totalInputTokens,
+      output_tokens: totalOutputTokens,
+    };
+  }
+
+  const context = reranked.map((c) => c.content).join("\n---\n");
+  const systemPrompt = `Bạn là trợ lý tra cứu địa giới hành chính TP.HCM sau sắp xếp (1/7/2025).
+Chỉ trả lời dựa trên đoạn văn bản được cung cấp dưới đây, không dùng kiến thức ngoài đoạn văn bản này.
+Trả lời bằng 1 câu hoàn chỉnh, có chủ ngữ - vị ngữ rõ ràng, nêu tên đơn vị cũ, tên đơn vị mới,
+và số hiệu văn bản pháp lý liên quan (VD: "Phường X (cũ) nay thuộc Phường Y, theo Nghị quyết ...").
+Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, PHẢI trả lời đúng và chỉ đúng chuỗi: KHONG_CO_DU_LIEU
+
+Đoạn văn bản:
+${context}`;
+
+  const {
+    text: llmAnswer,
+    input_tokens: ansIn,
+    output_tokens: ansOut,
+  } = await callLLM(provider, systemPrompt, rewrittenQuestion);
+  totalInputTokens += ansIn ?? 0;
+  totalOutputTokens += ansOut ?? 0;
+
+  if (!llmAnswer || llmAnswer.trim() === "KHONG_CO_DU_LIEU") {
+    return {
+      no_answer: true,
+      model_used: "advanced_rag",
+      rewritten_question: rewrittenQuestion,
+      rerank_top_score: reranked[0].rerank_score,
+      input_tokens: totalInputTokens,
+      output_tokens: totalOutputTokens,
+    };
+  }
+
+  const uniqueSources = [
+    ...new Map(
+      reranked.map((c) => [
+        c.doc_code + (c.section_label || ""),
+        {
+          document_id: c.doc_code,
+          title: c.title,
+          section: c.section_label || null,
+          source_url: c.source_url,
+        },
+      ]),
+    ).values(),
+  ];
+
+  return {
+    answer: llmAnswer.trim(),
+    answer_type: "rag_generated",
+    answer_level: "unit",
+    model_used: "advanced_rag",
+    llm_provider: provider,
+    rewritten_question: rewrittenQuestion,
+    rerank_top_score: reranked[0].rerank_score,
+    confidence: reranked[0].rerank_score,
+    input_tokens: totalInputTokens,
+    output_tokens: totalOutputTokens,
+    sources: uniqueSources,
+  };
+}
+
+// ============ MODEL 4: MODULAR RAG (router + hybrid retrieval) ============
 
 async function keywordSearch(question) {
   const scopeFilter = SCOPE_KEYWORDS.map(
@@ -315,13 +694,13 @@ async function vectorSearchRaw(question) {
   const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
 
   const { rows } = await pool.query(
-    `SELECT c.id, c.content, d.doc_code, d.title, d.source_url,
-            1 - (c.embedding <=> $1) AS similarity
-     FROM document_chunks c
-     JOIN legal_documents d ON d.id = c.document_id
-     WHERE (${scopeFilter})
-     ORDER BY c.embedding <=> $1
-     LIMIT 5`,
+    `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
+          1 - (c.embedding <=> $1) AS similarity
+   FROM document_chunks c
+   JOIN legal_documents d ON d.id = c.document_id
+   WHERE (${scopeFilter})
+   ORDER BY c.embedding <=> $1
+   LIMIT 5`,
     [vectorLiteral, ...scopeParams],
   );
   return rows;
@@ -354,12 +733,10 @@ async function tryHybridRetrieval(question) {
   return reciprocalRankFusion(vectorResults, keywordResults).slice(0, 5);
 }
 
-async function tryModularRAG(question, provider = "gemini") {
-  const structuredResult =
-    (await tryOldUnitMatch(question)) ||
-    (await tryNewUnitMatch(question)) ||
-    (await tryOldProvinceMatch(question));
-
+async function tryModularRAG(question, provider = "gemini", provinceId = null) {
+  // MỚI: gọi qua runStructuredLookup() thay vì lặp lại logic 3 hàm tra cứu
+  // + đã có sẵn bộ lọc isLikelyOutOfScopeTopic() ở trong đó.
+  const structuredResult = await runStructuredLookup(question, provinceId);
   if (structuredResult) {
     return {
       ...structuredResult,
@@ -374,13 +751,26 @@ async function tryModularRAG(question, provider = "gemini") {
   const context = fusedChunks.map((c) => c.content).join("\n---\n");
   const systemPrompt = `Bạn là trợ lý tra cứu địa giới hành chính TP.HCM sau sắp xếp (1/7/2025).
 Chỉ trả lời dựa trên đoạn văn bản được cung cấp dưới đây, không dùng kiến thức ngoài đoạn văn bản này.
+Trả lời bằng 1 câu hoàn chỉnh, có chủ ngữ - vị ngữ rõ ràng, nêu tên đơn vị cũ, tên đơn vị mới,
+và số hiệu văn bản pháp lý liên quan (VD: "Phường X (cũ) nay thuộc Phường Y, theo Nghị quyết ...").
 Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, PHẢI trả lời đúng và chỉ đúng chuỗi: KHONG_CO_DU_LIEU
 
 Đoạn văn bản:
 ${context}`;
 
-  const llmAnswer = await callLLM(provider, systemPrompt, question);
-  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU") return null;
+  const {
+    text: llmAnswer,
+    input_tokens,
+    output_tokens,
+  } = await callLLM(provider, systemPrompt, question);
+  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU")
+    return {
+      no_answer: true,
+      model_used: "modular_rag",
+      routing_decision: "hybrid_retrieval",
+      input_tokens,
+      output_tokens,
+    };
 
   const uniqueSources = [
     ...new Map(
@@ -403,29 +793,63 @@ ${context}`;
     routing_decision: "hybrid_retrieval",
     llm_provider: provider,
     confidence: 0.8,
+    input_tokens,
+    output_tokens,
     sources: uniqueSources,
   };
 }
 
 // ============ POST /qa/ask ============
+let validProvinceIdsCache = null;
+async function getValidProvinceIds() {
+  if (!validProvinceIdsCache) {
+    const { rows } = await pool.query("SELECT id FROM provinces_new");
+    validProvinceIdsCache = rows.map((r) => Number(r.id));
+  }
+  return validProvinceIdsCache;
+}
 
 async function ask(req, res) {
   try {
-    const { question, session_id, llm_provider, model } = req.body;
-    const provider = [
-      "gemini",
-      "deepseek",
-      "cohere",
-      "gemini_reasoning",
-    ].includes(llm_provider)
-      ? llm_provider
-      : "gemini";
-    const selectedModel = ["rule_based", "naive_rag", "modular_rag"].includes(
-      model,
-    )
+    const { question, session_id, llm_provider, model, province_id } = req.body;
+
+    const VALID_PROVIDERS = Object.keys(PROVIDERS); // tự động lấy đúng danh sách provider thật sự tồn tại
+
+    if (llm_provider && !VALID_PROVIDERS.includes(llm_provider)) {
+      return res
+        .status(400)
+        .json(
+          fail(
+            `Provider "${llm_provider}" không hợp lệ. Chọn 1 trong: ${VALID_PROVIDERS.join(", ")}`,
+            "VALIDATION_ERROR",
+          ),
+        );
+    }
+    const provider = llm_provider || "gemini"; // mặc định khi không truyền, KHÔNG fallback khi truyền sai
+
+    const VALID_PROVINCE_IDS = await getValidProvinceIds();
+    let provinceId = null;
+    if (province_id !== undefined && province_id !== null) {
+      provinceId = Number(province_id);
+      if (!VALID_PROVINCE_IDS.includes(provinceId)) {
+        return res
+          .status(400)
+          .json(
+            fail(
+              `province_id "${province_id}" không hợp lệ. Chọn 1 trong: ${VALID_PROVINCE_IDS.join(", ")}`,
+              "VALIDATION_ERROR",
+            ),
+          );
+      }
+    }
+    const selectedModel = [
+      "rule_based",
+      "naive_rag",
+      "advanced_rag",
+      "modular_rag",
+    ].includes(model)
       ? model
       : "modular_rag";
-
     if (!question || typeof question !== "string" || question.length === 0) {
       return res
         .status(400)
@@ -441,16 +865,68 @@ async function ask(req, res) {
     let result;
 
     if (selectedModel === "rule_based") {
-      result =
-        (await tryOldUnitMatch(question)) ||
-        (await tryNewUnitMatch(question)) ||
-        (await tryOldProvinceMatch(question));
+      // MỚI: gọi qua runStructuredLookup() thay vì lặp lại logic 3 hàm tra cứu
+      result = await runStructuredLookup(question, provinceId);
     } else if (selectedModel === "naive_rag") {
       result = await tryVectorSearch(question, provider);
+    } else if (selectedModel === "advanced_rag") {
+      try {
+        result = await tryAdvancedRAG(question, provider, provinceId);
+      } catch (err) {
+        // MỚI — DEBUG TẠM THỜI
+        console.error(
+          "RAW ERROR (advanced_rag):",
+          err?.response?.status,
+          err?.statusCode,
+          err?.message,
+          JSON.stringify(err?.body || err?.response?.data || {}),
+        );
+        if (isConnectionError(err)) {
+          return res.status(503).json({
+            success: false,
+            data: null,
+            message:
+              "Xin lỗi, hiện hệ thống đang gặp sự cố kết nối và chưa thể xử lý câu hỏi của bạn. Vui lòng thử lại sau ít phút.",
+            error_code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        throw err; // lỗi không xác định — vẫn nên biết để debug tiếp, không nuốt âm thầm
+      }
     } else {
-      result = await tryModularRAG(question, provider);
+      result = await tryModularRAG(question, provider, provinceId);
     }
-
+    if (result && result.no_answer) {
+      const qaLogId = await logQa(
+        session_id,
+        question,
+        null,
+        "no_answer",
+        result.model_used,
+        provider,
+        result.routing_decision || null,
+        0,
+        Date.now() - startTime,
+        result.rewritten_question,
+        result.rerank_top_score,
+        result.input_tokens ?? null,
+        result.output_tokens ?? null,
+      );
+      return res.status(200).json({
+        success: true,
+        data: {
+          answer: null,
+          answer_type: "no_answer",
+          answer_level: null,
+          confidence: 0,
+          sources: [],
+          qa_log_id: qaLogId,
+          suggestion:
+            "Câu hỏi nằm ngoài phạm vi dữ liệu hệ thống hiện có (TP.HCM sau sắp xếp).",
+        },
+        message: "NO_ANSWER_FOUND",
+        error_code: "NO_ANSWER_FOUND",
+      });
+    }
     if (result) {
       const qaLogId = await logQa(
         session_id,
@@ -462,6 +938,10 @@ async function ask(req, res) {
         result.routing_decision || null,
         result.confidence,
         Date.now() - startTime,
+        result.rewritten_question || null,
+        result.rerank_top_score || null,
+        result.input_tokens ?? null,
+        result.output_tokens ?? null,
       );
       const {
         model_used,
@@ -504,14 +984,13 @@ async function ask(req, res) {
   } catch (err) {
     console.error(err);
     if (err instanceof RateLimitError) {
-      return res
-        .status(429)
-        .json(
-          fail(
-            "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút.",
-            "RATE_LIMITED",
-          ),
-        );
+      return res.status(429).json({
+        ...fail(
+          "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút.",
+          "RATE_LIMITED",
+        ),
+        retry_after_ms: err.retryAfterMs || null,
+      });
     }
     if (err instanceof ServiceUnavailableError) {
       return res
@@ -525,6 +1004,17 @@ async function ask(req, res) {
     }
     return res.status(500).json(fail("Lỗi hệ thống", "INTERNAL_ERROR"));
   }
+}
+
+async function searchOfficialSources(query) {
+  const res = await axios.get("https://www.googleapis.com/customsearch/v1", {
+    params: {
+      key: process.env.GOOGLE_SEARCH_API_KEY,
+      cx: process.env.GOOGLE_SEARCH_ENGINE_ID, // Custom Search Engine đã giới hạn domain vbpl.vn, chinhphu.vn
+      q: query,
+    },
+  });
+  return res.data.items?.slice(0, 3) || [];
 }
 
 module.exports = { ask };

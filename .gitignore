@@ -19,3 +19,7 @@ Thumbs.db
 
 data/*.xlsx
 node_modules/  
+
+# Temporary model results / backups
+data/batch_results/_temp_*
+data/batch_results/_summary_backup_*

@@ -3,7 +3,11 @@ const XLSX = require("xlsx");
 const { Pool } = require("pg");
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const MERGE_TYPE_MAP = { "toàn bộ": "toan_bo", "một phần": "mot_phan" };
+const MERGE_TYPE_MAP = {
+  "toàn bộ": "toan_bo",
+  "một phần": "mot_phan",
+  "không sắp xếp": "toan_bo",
+};
 
 // ============================================================================
 // Chuẩn hóa tên tỉnh để so khớp giữa các sheet/tỉnh khác nhau, bất kể cách viết
@@ -21,15 +25,33 @@ function normalizeProvinceCore(name) {
     .replace(/đ/g, "d");
 }
 
-// admin_units_new.code là VARCHAR(20) - không đủ chỗ ghép tên dài, dùng mã ngắn tuần tự ổn định
-function buildUnitCodeMap(allNewUnitNames) {
-  const uniqueSorted = [...new Set(allNewUnitNames)].sort((a, b) =>
+// admin_units_new.code là VARCHAR(20) - không đủ chỗ ghép tên dài, dùng mã ngắn tuần tự ổn định.
+// QUAN TRỌNG: code phải nhúng thẳng province_new_id (khoá ngoại ổn định, không đổi
+// giữa các lần chạy script) làm tiền tố. Nếu chỉ đếm số thứ tự thuần tuý (u0001, u0002...)
+// thì mỗi lần chạy script (mỗi file/mỗi tỉnh) là 1 tiến trình Node độc lập, bộ đếm luôn
+// reset về 1 -> CHẮC CHẮN sẽ có lúc 2 tỉnh khác nhau vô tình trùng số thứ tự -> trùng code
+// -> ON CONFLICT (code) nối nhầm dữ liệu 2 tỉnh vào chung 1 admin_units_new.id (đây chính
+// là nguyên nhân bug dữ liệu bị trộn lẫn hàng loạt tỉnh trước đó).
+function buildUnitCodeMap(rows, provinceNewIdMap) {
+  const keyOf = (r) => {
+    const provId = provinceNewIdMap[(r.new_parent || "").trim()];
+    return `${provId}|||${(r.new_unit_name || "").trim()}`;
+  };
+  const uniqueKeys = [...new Set(rows.map(keyOf))].sort((a, b) =>
     a.localeCompare(b, "vi"),
   );
+
+  // Đếm số thứ tự RIÊNG theo từng tỉnh (provId) - vì provId lấy từ DB (đã tồn tại
+  // sẵn/ổn định qua mọi lần chạy), 2 lần chạy khác nhau cho 2 tỉnh khác nhau sẽ luôn
+  // sinh ra tiền tố "p{provId}_" khác nhau -> không thể trùng code giữa các tỉnh.
+  const counters = new Map();
   const map = new Map();
-  uniqueSorted.forEach((name, i) =>
-    map.set(name, `u${String(i + 1).padStart(4, "0")}`),
-  );
+  for (const key of uniqueKeys) {
+    const [provId] = key.split("|||");
+    const next = (counters.get(provId) || 0) + 1;
+    counters.set(provId, next);
+    map.set(key, `p${provId}_${String(next).padStart(4, "0")}`);
+  }
   return map;
 }
 
@@ -140,7 +162,7 @@ async function importData(client, filePath) {
       r.new_unit_name &&
       r.old_parent,
   );
-  const codeMap = buildUnitCodeMap(validRows.map((r) => r.new_unit_name));
+  const codeMap = buildUnitCodeMap(validRows, provinceNewIdMap);
   const ALLOWED_OLD_TYPES = ["phuong", "xa", "thi_tran", "huyen"];
 
   for (const r of unitRows) {
@@ -157,6 +179,9 @@ async function importData(client, filePath) {
 
     // ---- Xác định tỉnh CŨ của dòng này (tự động, không hard-code) ----
     const districtKey = (r.old_parent || "").trim();
+    const parentClean = String(r.old_parent || "")
+      .replace(/\s*\(\d+\)\s*$/, "")
+      .trim();
     const provinceOldCore = districtToProvinceCore[districtKey];
     const provinceOldFkName = provinceOldCore
       ? provinceOldNameMap[provinceOldCore]
@@ -202,7 +227,7 @@ async function importData(client, filePath) {
       [
         r.old_unit_name,
         oldType,
-        r.old_parent,
+        parentClean,
         provinceOldLabel,
         provinceOldFkName,
       ],
@@ -212,12 +237,14 @@ async function importData(client, filePath) {
     if (!oldUnitId) {
       const { rows: found } = await client.query(
         `SELECT id FROM admin_units_old WHERE name=$1 AND parent_name=$2 LIMIT 1`,
-        [r.old_unit_name, r.old_parent],
+        [r.old_unit_name, parentClean],
       );
       oldUnitId = found[0]?.id;
     }
 
-    const code = codeMap.get(r.new_unit_name);
+    const code = codeMap.get(
+      `${provinceNewId}|||${(r.new_unit_name || "").trim()}`,
+    );
     const { rows: newUnit } = await client.query(
       `INSERT INTO admin_units_new (code, name, unit_type, province_new_id)
        VALUES ($1, $2, $3, $4) ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name RETURNING id`,

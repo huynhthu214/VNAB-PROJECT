@@ -1,10 +1,15 @@
 -- ============================================================================
--- SCHEMA DATABASE HOÀN CHỈNH (v2 — gộp thành 1 file duy nhất)
+-- SCHEMA DATABASE HOÀN CHỈNH (v1.3 — GỘP 1 FILE DUY NHẤT, thay cho cả
+-- schema.sql cũ và schema_v3.sql — từ nay chỉ dùng file này)
 -- Hệ thống hỏi đáp tự động về địa giới hành chính TP.HCM - Done Team
 -- PostgreSQL 15+ với extension pgvector
 -- ============================================================================
--- Cách chạy:
---   psql -U postgres -d done_team_db -f schema.sql
+-- Cách chạy trên DB MỚI HOÀN TOÀN (chưa có gì): chạy cả file từ đầu tới cuối.
+-- Cách chạy trên DB ĐÃ CÓ DỮ LIỆU (trường hợp của bạn — đã có 493 dòng
+--   TP.HCM, đã chạy batch Gemini...): CHỈ CẦN chạy phần "MIGRATION v1.3"
+--   ở cuối file (mục 10). Các mục 1–9 phía trên dùng IF NOT EXISTS / IF EXISTS
+--   nên chạy lại cũng không sao (không xóa, không đổi dữ liệu đã có), nhưng
+--   không bắt buộc phải chạy lại vì bảng/cột đã tồn tại rồi.
 -- File này idempotent (chạy lại nhiều lần không lỗi) nhờ IF NOT EXISTS.
 -- KHÔNG chứa dữ liệu mẫu — dữ liệu thật nạp riêng từ file Excel qua
 -- script import_excel_to_db.js SAU khi chạy file này.
@@ -205,10 +210,37 @@ ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS routing_decision VARCHAR(20);
 --    trước khi nạp dữ liệu tỉnh khác, nếu không sẽ bị từ chối toàn bộ dòng mới.
 -- ============================================================================
 ALTER TABLE admin_units_old DROP CONSTRAINT IF EXISTS admin_units_old_province_old_check;
+
 -- ============================================================================
+-- 10. MIGRATION v1.3 — bổ sung cho Model 3 (Advanced RAG): query rewriting
+--     + rerank. Đây là phần DUY NHẤT bạn cần chạy nếu DB đã có sẵn dữ liệu
+--     (đã qua migration 8, 9 ở trên rồi). Idempotent, chạy lại vô hại.
+-- ============================================================================
+
+-- 10.1 Lưu câu hỏi sau khi LLM viết lại + điểm rerank cao nhất (Model 3 dùng)
+ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS rewritten_question TEXT;
+ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS rerank_top_score NUMERIC(5,4);
+
+-- 10.2 model_used cần thêm giá trị 'advanced_rag' — Postgres không cho sửa
+--      trực tiếp nội dung 1 CHECK constraint, phải DROP rồi ADD lại
+ALTER TABLE qa_logs DROP CONSTRAINT IF EXISTS qa_logs_model_used_check;
+ALTER TABLE qa_logs ADD CONSTRAINT qa_logs_model_used_check
+  CHECK (model_used IN ('rule_based', 'naive_rag', 'advanced_rag', 'modular_rag'));
+
+-- 10.3 section_label — nhãn "Điều X" / "Khoản Y" khi chunk văn bản
+--      (bổ sung nếu DB của bạn tạo trước khi sửa bug chunkDocuments.js)
+ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS section_label VARCHAR(50);
+-- ============================================================================
+-- 11. MIGRATION v1.4 — thêm cột đếm token, phục vụ tính chi phí theo
+--     provider (Gemini/Cohere/Groq) cho thí nghiệm phụ so sánh provider.
+--     Idempotent, chạy lại vô hại.
+-- ============================================================================
+ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS input_tokens INTEGER;
+ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS output_tokens INTEGER;
+
 -- HẾT FILE — kiểm tra nhanh sau khi chạy:
 --   SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
---   (phải thấy đủ 8 bảng: legal_documents, provinces_old, provinces_new,
+--   (phải thấy đủ 9 bảng: legal_documents, provinces_old, provinces_new,
 --    province_mapping, admin_units_old, admin_units_new, unit_mapping,
 --    document_chunks, qa_logs)
--- ============================================================================
+--

@@ -8,3 +8,11 @@ data/batch_results/_temp_*
 # Bỏ dòng dưới nếu muốn giữ lại tất cả lịch sử chạy; mặc định chỉ giữ timing_summary.xlsx
 # (là bảng tổng hợp cộng dồn, đã đủ dùng cho báo cáo) và bỏ qua các results_*.xlsx lẻ.
 data/batch_results/results_*.xlsx
+
+# Bỏ qua toàn bộ kết quả batch test thô (pilot, debug, thử ngưỡng)
+data/batch_results/*
+!data/batch_results/final
+!data/batch_results/final/**
+
+# File tạm của Excel khi đang mở
+data/batch_results/**/~$*.xlsx
