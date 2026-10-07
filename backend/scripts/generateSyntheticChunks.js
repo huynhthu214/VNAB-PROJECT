@@ -31,8 +31,11 @@ async function upsertChunk(
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (document_id, chunk_index)
      DO UPDATE SET content = EXCLUDED.content, section_label = EXCLUDED.section_label,
-                    province_new_id = EXCLUDED.province_new_id,
-                    embedding = NULL, embedding_model = NULL`,
+                   province_new_id = EXCLUDED.province_new_id,
+                   embedding = CASE WHEN document_chunks.content = EXCLUDED.content
+                                    THEN document_chunks.embedding ELSE NULL END,
+                   embedding_model = CASE WHEN document_chunks.content = EXCLUDED.content
+                                    THEN document_chunks.embedding_model ELSE NULL END`,
     [documentId, chunkIndex, content, sectionLabel, provinceNewId],
   );
 }

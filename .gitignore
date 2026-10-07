@@ -23,3 +23,7 @@ node_modules/
 # Temporary model results / backups
 data/batch_results/_temp_*
 data/batch_results/_summary_backup_*
+
+__pycache__/
+*.pyc
+*.dump
