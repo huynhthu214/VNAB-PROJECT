@@ -5,25 +5,36 @@ const axios = require("axios");
 const XLSX = require("xlsx");
 
 // ============ CẤU HÌNH — ĐỔI GIỮA CÁC LƯỢT CHẠY ============
-const LLM_PROVIDER = process.env.LLM_PROVIDER_OVERRIDE || "cohere"; // "gemini" | "cohere"
+const LLM_PROVIDER = process.env.LLM_PROVIDER_OVERRIDE || "gemini"; // "gemini" | "cohere"
 const MODELS_TO_RUN = [
   "rule_based",
   "naive_rag",
   "advanced_rag",
   "modular_rag",
 ];
-const PROVINCE_ID = Number(process.env.PROVINCE_ID || 1);
+const PROVINCES = {
+  // HCM: { id: 1, name: "TP. Hồ Chí Minh", testSet: "test_matrix_HCM.xlsx" },
+  // AG: { id: 7, name: "Tỉnh An Giang", testSet: "test_matrix_AG.xlsx" },
+  // CM: { id: 9, name: "Tỉnh Cà Mau", testSet: "test_matrix_CM.xlsx" },
+  // CT: { id: 11, name: "Thành phố Cần Thơ", testSet: "test_matrix_CT.xlsx" },
+  // DN: { id: 14, name: "Tỉnh Đồng Nai", testSet: "test_matrix_DN.xlsx" },
+  // DT: { id: 16, name: "Tỉnh Đồng Tháp", testSet: "test_matrix_DT.xlsx" },
+  // TN: { id: 18, name: "Tỉnh Tây Ninh", testSet: "test_matrix_TN.xlsx" },
+  VL: { id: 20, name: "Tỉnh Vĩnh Long", testSet: "test_matrix_VL.xlsx" },
+};
+const PROVINCE_CODE = process.env.PROVINCE;
+const PROV = PROVINCES[PROVINCE_CODE];
+if (!PROV || !PROV.id) {
+  console.error(
+    `Phải đặt $env:PROVINCE = một trong: ${Object.keys(PROVINCES).join(", ")} (và điền id trong PROVINCES).`,
+  );
+  process.exit(1);
+}
+const RUN_ID = new Date().toISOString().replace(/[:.]/g, "-");
+const PROMPT_VERSION = process.env.PROMPT_VERSION || "v2";
+const PROVINCE_ID = PROV.id;
 const TEST_SET_PATH =
-  process.env.TEST_SET_PATH ||
-  path.join(__dirname, "../data/test_matrix_TPHCM.xlsx");
-// const TEST_SET_PATH = path.join(__dirname, "../data/pilot_test_set.xlsx");
-
-// Chạy 1 khoảng con của bộ câu hỏi (dùng khi quota provider không đủ chạy
-// hết trong 1 ngày). Không set 2 biến env này -> chạy full như bình thường.
-// PowerShell ví dụ chạy 100 câu đầu:
-//   $env:QUESTION_START="0"; $env:QUESTION_END="100"; node scripts/runBatchTest.js
-// Ngày hôm sau, chạy phần còn lại:
-//   $env:QUESTION_START="100"; $env:QUESTION_END="161"; node scripts/runBatchTest.js
+  process.env.TEST_SET_PATH || path.join(__dirname, "../data", PROV.testSet);
 const QUESTION_START = process.env.QUESTION_START
   ? Number(process.env.QUESTION_START)
   : null;
@@ -36,11 +47,8 @@ const RESULTS_ROOT = path.join(
   __dirname,
   "../data/batch_results/official_batch",
 );
-const RESULTS_DIR =
-  PROVINCE_ID === 1
-    ? RESULTS_ROOT
-    : path.join(RESULTS_ROOT, `province_${PROVINCE_ID}`);
-const SUMMARY_PATH = path.join(RESULTS_DIR, "timing_summary.xlsx");
+const RESULTS_DIR = path.join(RESULTS_ROOT, PROVINCE_CODE); // kết quả tách theo tỉnh
+const SUMMARY_PATH = path.join(RESULTS_ROOT, "timing_summary.xlsx"); // 1 file tổng hợp chung mọi tỉnh
 
 const CONCURRENCY = 4; // chỉ áp dụng cho rule_based (không gọi AI)
 
@@ -513,8 +521,13 @@ async function runModel(model, questions, tempJsonlPath) {
 
   const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
   const rows = readJsonLines(tempJsonlPath);
+  const elapsed = Number(((Date.now() - startedAt) / 1000).toFixed(1));
   const stats = {
+    run_id: RUN_ID,
+    prompt_version: PROMPT_VERSION,
     provider: LLM_PROVIDER,
+    province_code: PROVINCE_CODE,
+    province_name: PROV.name,
     province_id: PROVINCE_ID,
     model,
     total_questions: rows.length,
@@ -531,7 +544,7 @@ async function runModel(model, questions, tempJsonlPath) {
     avg_response_time_ms: Math.round(
       rows.reduce((sum, r) => sum + (r.response_time_ms || 0), 0) / rows.length,
     ),
-    total_elapsed_sec: elapsedSec,
+    total_elapsed_sec: elapsed,
     timestamp: new Date().toISOString(),
   };
 
@@ -652,7 +665,7 @@ async function run() {
     `Đã đọc ${questions.length} câu hỏi (tổng bộ test: ${allQuestions.length}). Provider: ${LLM_PROVIDER}. Model: ${MODELS_TO_RUN.join(", ")}`,
   );
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const timestamp = RUN_ID;
   const allStats = [];
   const runStartedAt = Date.now();
 
@@ -677,10 +690,13 @@ async function run() {
       await sleep(DELAY_BETWEEN_MODELS_MS);
     }
   }
-
+  const totalElapsedSec = Number(
+    ((Date.now() - runStartedAt) / 1000).toFixed(1),
+  );
+  allStats.forEach((s) => (s.run_total_elapsed_sec = totalElapsedSec));
+  appendSummaryRows(allStats);
   appendSummaryRows(allStats);
 
-  const totalElapsedSec = ((Date.now() - runStartedAt) / 1000).toFixed(1);
   console.log("\n=== HOÀN TẤT LƯỢT CHẠY NÀY ===");
   console.log(
     `Provider: ${LLM_PROVIDER} | Tổng thời gian toàn bộ: ${totalElapsedSec}s`,

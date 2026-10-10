@@ -165,7 +165,9 @@ const OUT_OF_SCOPE_TOPIC_KEYWORDS = [
   "trường cấp",
   "bệnh viện",
   "thời tiết",
-  "dân số hiện tại",
+  "dân số",
+  "gdp",
+  "kinh tế",
   "giá vàng",
   "giá xăng",
   "quán ăn",
@@ -436,31 +438,41 @@ const SCOPE_KEYWORDS = [
   "Bạc Liêu",
 ];
 
-async function tryVectorSearch(question, provider = "gemini") {
-  const embedding = await getEmbedding(question);
-  const vectorLiteral = `[${embedding.join(",")}]`;
-
+// Điều kiện phạm vi chunk DÙNG CHUNG cho mọi truy xuất (Naive, Advanced, hybrid của Modular).
+//  - Có provinceId: chỉ lấy chunk của đúng tỉnh đó (chunk tổng hợp có province_new_id).
+//  - Không có: bộ lọc SCOPE_KEYWORDS như cũ (để loại chunk văn bản pháp lý không liên quan),
+//    NHƯNG luôn cho qua chunk tổng hợp (document_id < 0). Trước đây chunk mới->cũ không chứa tên
+//    tỉnh nên bị bộ lọc này loại gần hết (chỉ 47/854 chunk lọt qua), khiến Naive RAG không truy xuất
+//    được loại chunk này.
+// startIdx = chỉ số tham số $ đầu tiên còn trống trong câu truy vấn gọi hàm này.
+function chunkScope(provinceId, startIdx) {
+  if (provinceId) {
+    return { sql: `c.province_new_id = $${startIdx}`, params: [provinceId] };
+  }
   const scopeFilter = SCOPE_KEYWORDS.map(
-    (_, i) => `c.content ILIKE $${i + 2}`,
+    (_, i) => `c.content ILIKE $${startIdx + i}`,
   ).join(" OR ");
-  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
+  return {
+    sql: `(c.document_id < 0 OR ${scopeFilter})`,
+    params: SCOPE_KEYWORDS.map((kw) => `%${kw}%`),
+  };
+}
+let provinceNameCache = null;
+async function getProvinceName(provinceId) {
+  if (!provinceId) return null;
+  if (!provinceNameCache) {
+    const { rows } = await pool.query("SELECT id, name FROM provinces_new");
+    provinceNameCache = new Map(rows.map((r) => [Number(r.id), r.name]));
+  }
+  return provinceNameCache.get(Number(provinceId)) || null;
+}
 
-  const { rows } = await pool.query(
-    `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
-            1 - (c.embedding <=> $1) AS similarity
-     FROM document_chunks c
-     JOIN legal_documents d ON d.id = c.document_id
-     WHERE (${scopeFilter})
-     ORDER BY c.embedding <=> $1
-     LIMIT 5`,
-    [vectorLiteral, ...scopeParams],
-  );
-
-  const relevant = rows.filter((r) => r.similarity > 0.4); // Giảm nhẹ ngưỡng similarity xuống 0.4 để an toàn
-  if (relevant.length === 0) return null;
-
-  const context = relevant.map((r) => r.content).join("\n---\n");
-  const systemPrompt = `Bạn là trợ lý tra cứu địa giới hành chính TP.HCM sau sắp xếp (1/7/2025).
+function buildSystemPrompt(context, provinceName) {
+  const scope = provinceName
+    ? `Phạm vi tra cứu: ${provinceName}. Mọi đoạn văn bản dưới đây đều thuộc phạm vi này, kể cả khi đoạn văn bản không ghi tên tỉnh.`
+    : `Phạm vi tra cứu: các tỉnh khu vực miền Nam Việt Nam.`;
+  return `Bạn là trợ lý tra cứu địa giới hành chính sau sắp xếp (1/7/2025).
+${scope}
 Chỉ trả lời dựa trên đoạn văn bản được cung cấp dưới đây, không dùng kiến thức ngoài đoạn văn bản này.
 Trả lời bằng 1 câu hoàn chỉnh, có chủ ngữ - vị ngữ rõ ràng, nêu tên đơn vị cũ, tên đơn vị mới,
 và số hiệu văn bản pháp lý liên quan (VD: "Phường X (cũ) nay thuộc Phường Y, theo Nghị quyết ...").
@@ -468,6 +480,24 @@ Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, P
 
 Đoạn văn bản:
 ${context}`;
+}
+async function tryVectorSearch(
+  question,
+  provider = "gemini",
+  provinceId = null,
+) {
+  // Dùng CHUNG hàm truy xuất với Advanced RAG (cùng phạm vi tỉnh, chỉ khác top-N) để chênh lệch
+  // Naive -> Advanced chỉ còn do query rewriting + rerank, đúng nguyên tắc ablation.
+  const rows = await vectorSearchTopN(question, 5, provinceId);
+
+  const relevant = rows.filter((r) => r.similarity > 0.4); // Giảm nhẹ ngưỡng similarity xuống 0.4 để an toàn
+  if (relevant.length === 0) return null;
+
+  const context = relevant.map((r) => r.content).join("\n---\n");
+  const systemPrompt = buildSystemPrompt(
+    context,
+    await getProvinceName(provinceId),
+  );
 
   const {
     text: llmAnswer,
@@ -538,20 +568,16 @@ async function vectorSearchTopN(question, topN = 10, provinceId = null) {
     // Không có chunk nào được gán đúng tab này -> rơi xuống tìm không giới hạn bên dưới
   }
 
-  const scopeFilter = SCOPE_KEYWORDS.map(
-    (_, i) => `c.content ILIKE $${i + 3}`,
-  ).join(" OR ");
-  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
-
+  const scope = chunkScope(null, 3);
   const { rows } = await pool.query(
     `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
             1 - (c.embedding <=> $1) AS similarity
      FROM document_chunks c
      JOIN legal_documents d ON d.id = c.document_id
-     WHERE (${scopeFilter})
+     WHERE ${scope.sql}
      ORDER BY c.embedding <=> $1
      LIMIT $2`,
-    [vectorLiteral, topN, ...scopeParams],
+    [vectorLiteral, topN, ...scope.params],
   );
 
   return rows;
@@ -586,7 +612,6 @@ async function tryAdvancedRAG(
   }
 
   const reranked = await rerankChunks(rewrittenQuestion, topN, 12);
-
   const topChunk = reranked[0];
   const effectiveThreshold =
     topChunk?.doc_code === "SYNTHETIC-NEW2OLD"
@@ -605,14 +630,10 @@ async function tryAdvancedRAG(
   }
 
   const context = reranked.map((c) => c.content).join("\n---\n");
-  const systemPrompt = `Bạn là trợ lý tra cứu địa giới hành chính TP.HCM sau sắp xếp (1/7/2025).
-Chỉ trả lời dựa trên đoạn văn bản được cung cấp dưới đây, không dùng kiến thức ngoài đoạn văn bản này.
-Trả lời bằng 1 câu hoàn chỉnh, có chủ ngữ - vị ngữ rõ ràng, nêu tên đơn vị cũ, tên đơn vị mới,
-và số hiệu văn bản pháp lý liên quan (VD: "Phường X (cũ) nay thuộc Phường Y, theo Nghị quyết ...").
-Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, PHẢI trả lời đúng và chỉ đúng chuỗi: KHONG_CO_DU_LIEU
-
-Đoạn văn bản:
-${context}`;
+  const systemPrompt = buildSystemPrompt(
+    context,
+    await getProvinceName(provinceId),
+  );
 
   const {
     text: llmAnswer,
@@ -621,7 +642,6 @@ ${context}`;
   } = await callLLM(provider, systemPrompt, rewrittenQuestion);
   totalInputTokens += ansIn ?? 0;
   totalOutputTokens += ansOut ?? 0;
-
   if (!llmAnswer || llmAnswer.trim() === "KHONG_CO_DU_LIEU") {
     return {
       no_answer: true,
@@ -664,44 +684,35 @@ ${context}`;
 
 // ============ MODEL 4: MODULAR RAG (router + hybrid retrieval) ============
 
-async function keywordSearch(question) {
-  const scopeFilter = SCOPE_KEYWORDS.map(
-    (_, i) => `c.content ILIKE $${i + 2}`,
-  ).join(" OR ");
-  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
-
+async function keywordSearch(question, provinceId = null) {
+  const scope = chunkScope(provinceId, 2);
   const { rows } = await pool.query(
     `SELECT c.id, c.content, d.doc_code, d.title, d.source_url,
             ts_rank(c.content_tsv, plainto_tsquery('simple', $1)) AS rank
      FROM document_chunks c
      JOIN legal_documents d ON d.id = c.document_id
      WHERE c.content_tsv @@ plainto_tsquery('simple', $1)
-       AND (${scopeFilter})
+       AND ${scope.sql}
      ORDER BY rank DESC
      LIMIT 5`,
-    [question, ...scopeParams],
+    [question, ...scope.params],
   );
   return rows;
 }
 
-async function vectorSearchRaw(question) {
+async function vectorSearchRaw(question, provinceId = null) {
   const embedding = await getEmbedding(question);
   const vectorLiteral = `[${embedding.join(",")}]`;
-
-  const scopeFilter = SCOPE_KEYWORDS.map(
-    (_, i) => `c.content ILIKE $${i + 2}`,
-  ).join(" OR ");
-  const scopeParams = SCOPE_KEYWORDS.map((kw) => `%${kw}%`);
-
+  const scope = chunkScope(provinceId, 2);
   const { rows } = await pool.query(
-    `SELECT c.content, c.section_label, d.doc_code, d.title, d.source_url,
+    `SELECT c.id, c.content, c.section_label, d.doc_code, d.title, d.source_url,
           1 - (c.embedding <=> $1) AS similarity
    FROM document_chunks c
    JOIN legal_documents d ON d.id = c.document_id
-   WHERE (${scopeFilter})
+   WHERE ${scope.sql}
    ORDER BY c.embedding <=> $1
    LIMIT 5`,
-    [vectorLiteral, ...scopeParams],
+    [vectorLiteral, ...scope.params],
   );
   return rows;
 }
@@ -724,10 +735,10 @@ function reciprocalRankFusion(listA, listB, k = 60) {
     .map((e) => e.item);
 }
 
-async function tryHybridRetrieval(question) {
+async function tryHybridRetrieval(question, provinceId = null) {
   const [keywordResults, vectorResults] = await Promise.all([
-    keywordSearch(question),
-    vectorSearchRaw(question),
+    keywordSearch(question, provinceId),
+    vectorSearchRaw(question, provinceId),
   ]);
   if (keywordResults.length === 0 && vectorResults.length === 0) return null;
   return reciprocalRankFusion(vectorResults, keywordResults).slice(0, 5);
@@ -745,18 +756,14 @@ async function tryModularRAG(question, provider = "gemini", provinceId = null) {
     };
   }
 
-  const fusedChunks = await tryHybridRetrieval(question);
+  const fusedChunks = await tryHybridRetrieval(question, provinceId);
   if (!fusedChunks || fusedChunks.length === 0) return null;
 
   const context = fusedChunks.map((c) => c.content).join("\n---\n");
-  const systemPrompt = `Bạn là trợ lý tra cứu địa giới hành chính TP.HCM sau sắp xếp (1/7/2025).
-Chỉ trả lời dựa trên đoạn văn bản được cung cấp dưới đây, không dùng kiến thức ngoài đoạn văn bản này.
-Trả lời bằng 1 câu hoàn chỉnh, có chủ ngữ - vị ngữ rõ ràng, nêu tên đơn vị cũ, tên đơn vị mới,
-và số hiệu văn bản pháp lý liên quan (VD: "Phường X (cũ) nay thuộc Phường Y, theo Nghị quyết ...").
-Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, PHẢI trả lời đúng và chỉ đúng chuỗi: KHONG_CO_DU_LIEU
-
-Đoạn văn bản:
-${context}`;
+  const systemPrompt = buildSystemPrompt(
+    context,
+    await getProvinceName(provinceId),
+  );
 
   const {
     text: llmAnswer,
@@ -868,7 +875,7 @@ async function ask(req, res) {
       // MỚI: gọi qua runStructuredLookup() thay vì lặp lại logic 3 hàm tra cứu
       result = await runStructuredLookup(question, provinceId);
     } else if (selectedModel === "naive_rag") {
-      result = await tryVectorSearch(question, provider);
+      result = await tryVectorSearch(question, provider, provinceId);
     } else if (selectedModel === "advanced_rag") {
       try {
         result = await tryAdvancedRAG(question, provider, provinceId);
