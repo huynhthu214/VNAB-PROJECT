@@ -27,3 +27,5 @@ data/batch_results/_summary_backup_*
 __pycache__/
 *.pyc
 *.dump
+
+backend/data/batch_results_backup_*/
