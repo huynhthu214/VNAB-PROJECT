@@ -4,8 +4,14 @@
 // Cài thư viện (1 lần):  npm i exceljs
 // Cách dùng (thư mục gốc backend):
 //   node scripts/buildGradingSheet.js --provider cohere
-//   node scripts/buildGradingSheet.js --provider cohere --province 4     # chỉ 1 tỉnh
-// Kết quả: data/batch_results/cham_tay_<provider>.xlsx
+//   node scripts/buildGradingSheet.js --provider cohere --per-province   # MỖI TỈNH 1 FILE, ghi ngay trong thư mục kết quả của tỉnh đó
+//   node scripts/buildGradingSheet.js --provider cohere --province 4     # chỉ tỉnh 4, ghi vào thư mục kết quả của tỉnh 4
+//   node scripts/buildGradingSheet.js --provider cohere --out data/x.xlsx   # tự chọn nơi ghi (gộp mọi tỉnh đang lọc vào 1 file)
+//   (--root <thư mục> để đọc kết quả ở nơi khác; --force để cho phép ghi đè file ĐÃ CHẤM)
+// Kết quả mặc định (không có --per-province / --province / --out): data/batch_results/cham_tay_<provider>.xlsx
+// Với --per-province / --province: <thư mục kết quả của tỉnh>/cham_tay_<provider>_province_<id>.xlsx
+//   (TP.HCM nằm ở thư mục gốc official_batch, các tỉnh khác ở official_batch/province_<id>)
+// An toàn: nếu file đích đã có dòng nào được chấm (nhan_cham_tay khác rỗng) thì BỎ QUA, trừ khi có --force.
 //
 // Mỗi dòng = 1 (tỉnh, câu hỏi, model). 4 model của cùng 1 câu nằm LIỀN NHAU để so sánh.
 // Cột "nhan_goi_y" là gợi ý tự động; bạn điền "nhan_cham_tay" (dropdown) theo quyết định của bạn.
@@ -24,7 +30,12 @@ const ROOT = path.resolve(
 );
 const PROVIDER = arg("--provider", "cohere");
 const ONLY_PROVINCE = arg("--province", null);
-const OUT = path.join(ROOT, "..", `cham_tay_${PROVIDER}.xlsx`);
+const OUT_ARG = arg("--out", null);
+const PER_PROVINCE = process.argv.includes("--per-province");
+const FORCE = process.argv.includes("--force");
+const DEFAULT_OUT = path.resolve(
+  path.join(ROOT, "..", `cham_tay_${PROVIDER}.xlsx`),
+);
 
 const LABELS = ["Đúng", "Sai", "Một phần", "No_answer hợp lệ", "Lỗi hạ tầng"];
 const CAUSES = [
@@ -61,7 +72,7 @@ for (const p of walk(ROOT)) {
   if (ONLY_PROVINCE && String(pid) !== String(ONLY_PROVINCE)) continue;
   const key = `${pid}|${m[2]}`;
   if (!latest.has(key) || m[3] > latest.get(key).ts)
-    latest.set(key, { ts: m[3], rows });
+    latest.set(key, { ts: m[3], rows, dir: path.dirname(p), pid });
 }
 if (!latest.size) {
   console.error("Không tìm thấy file results_* phù hợp trong", ROOT);
@@ -104,7 +115,7 @@ all.sort(
     MODEL_ORDER.indexOf(a.model) - MODEL_ORDER.indexOf(b.model),
 );
 
-(async () => {
+async function writeSheet(all, OUT) {
   const wb = new ExcelJS.Workbook();
 
   // ---- Sheet hướng dẫn ----
@@ -236,6 +247,50 @@ all.sort(
   await wb.xlsx.writeFile(OUT);
   const nQ = new Set(all.map((r) => `${r.province_id}|${r.test_id}`)).size;
   console.log(
-    `Đã tạo ${OUT}\n${all.length} dòng cần chấm (${nQ} câu x tối đa 4 model).`,
+    `Đã tạo ${OUT}\n  ${all.length} dòng cần chấm (${nQ} câu x tối đa 4 model).`,
   );
+}
+
+function hasGraded(file) {
+  try {
+    const wb = XLSX.readFile(file);
+    const ws = wb.Sheets["ChamTay"];
+    if (!ws) return false;
+    return XLSX.utils
+      .sheet_to_json(ws)
+      .some((r) => String(r.nhan_cham_tay || "").trim());
+  } catch {
+    return false;
+  }
+}
+
+(async () => {
+  const targets = []; // { rows, out }
+  const provinceIds = [...new Set(all.map((r) => String(r.province_id)))];
+  const dirOf = (pid) => {
+    // thư mục của lượt chạy MỚI NHẤT của tỉnh đó
+    const c = [...latest.values()]
+      .filter((v) => String(v.pid) === pid)
+      .sort((a, b) => (a.ts < b.ts ? 1 : -1));
+    return c[0].dir;
+  };
+  if (PER_PROVINCE || (ONLY_PROVINCE && !OUT_ARG)) {
+    for (const pid of provinceIds) {
+      targets.push({
+        rows: all.filter((r) => String(r.province_id) === pid),
+        out: path.join(dirOf(pid), `cham_tay_${PROVIDER}_province_${pid}.xlsx`),
+      });
+    }
+  } else {
+    targets.push({ rows: all, out: path.resolve(OUT_ARG || DEFAULT_OUT) });
+  }
+  for (const t of targets) {
+    if (fs.existsSync(t.out) && hasGraded(t.out) && !FORCE) {
+      console.warn(
+        `BỎ QUA (đã có dòng chấm tay, dùng --force nếu thật sự muốn ghi đè): ${t.out}`,
+      );
+      continue;
+    }
+    await writeSheet(t.rows, t.out);
+  }
 })();

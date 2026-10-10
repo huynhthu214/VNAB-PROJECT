@@ -39,6 +39,11 @@ function isRateLimitError(err) {
   return err.status === 429 || err.response?.status === 429;
 }
 
+function isMonthlyQuotaError(err) {
+  const msg = err.body?.message || err.message || "";
+  return /calls\s*\/\s*month/i.test(msg);
+}
+
 async function callGemini(systemPrompt, question) {
   const model = genAI.getGenerativeModel({
     model: "gemini-3.5-flash-lite",
@@ -138,6 +143,9 @@ async function callLLM(
         `Vượt giới hạn tần suất: ${providerName}`,
         retryAfterMs,
       );
+    }
+    if (isMonthlyQuotaError(err)) {
+      throw new RateLimitError(`Hết hạn mức tháng của ${providerName}`, null);
     }
     if (isConnectionError(err))
       throw new ServiceUnavailableError(
