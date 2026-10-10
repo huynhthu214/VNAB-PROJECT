@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
 const XLSX = require("xlsx");
+const { Pool } = require("pg");
 
 // ============ CẤU HÌNH — ĐỔI GIỮA CÁC LƯỢT CHẠY ============
 const LLM_PROVIDER = process.env.LLM_PROVIDER_OVERRIDE || "gemini"; // "gemini" | "cohere"
@@ -13,26 +14,49 @@ const MODELS_TO_RUN = [
   "modular_rag",
 ];
 const PROVINCES = {
-  // HCM: { id: 1, name: "TP. Hồ Chí Minh", testSet: "test_matrix_HCM.xlsx" },
-  // AG: { id: 7, name: "Tỉnh An Giang", testSet: "test_matrix_AG.xlsx" },
-  // CM: { id: 9, name: "Tỉnh Cà Mau", testSet: "test_matrix_CM.xlsx" },
-  // CT: { id: 11, name: "Thành phố Cần Thơ", testSet: "test_matrix_CT.xlsx" },
-  // DN: { id: 14, name: "Tỉnh Đồng Nai", testSet: "test_matrix_DN.xlsx" },
-  // DT: { id: 16, name: "Tỉnh Đồng Tháp", testSet: "test_matrix_DT.xlsx" },
-  // TN: { id: 18, name: "Tỉnh Tây Ninh", testSet: "test_matrix_TN.xlsx" },
-  VL: { id: 20, name: "Tỉnh Vĩnh Long", testSet: "test_matrix_VL.xlsx" },
+  HCM: { name: "TP. Hồ Chí Minh", testSet: "test_matrix_HCM.xlsx" },
+  AG: { name: "Tỉnh An Giang", testSet: "test_matrix_AG.xlsx" },
+  CM: { name: "Tỉnh Cà Mau", testSet: "test_matrix_CM.xlsx" },
+  CT: { name: "Thành phố Cần Thơ", testSet: "test_matrix_CT.xlsx" },
+  DN: { name: "Tỉnh Đồng Nai", testSet: "test_matrix_DN.xlsx" },
+  DT: { name: "Tỉnh Đồng Tháp", testSet: "test_matrix_DT.xlsx" },
+  TN: { name: "Tỉnh Tây Ninh", testSet: "test_matrix_TN.xlsx" },
+  VL: { name: "Tỉnh Vĩnh Long", testSet: "test_matrix_VL.xlsx" },
 };
 const PROVINCE_CODE = process.env.PROVINCE;
 const PROV = PROVINCES[PROVINCE_CODE];
-if (!PROV || !PROV.id) {
+if (!PROV) {
   console.error(
-    `Phải đặt $env:PROVINCE = một trong: ${Object.keys(PROVINCES).join(", ")} (và điền id trong PROVINCES).`,
+    `Phải đặt $env:PROVINCE = một trong: ${Object.keys(PROVINCES).join(", ")}.`,
   );
   process.exit(1);
 }
 const RUN_ID = new Date().toISOString().replace(/[:.]/g, "-");
 const PROMPT_VERSION = process.env.PROMPT_VERSION || "v2";
-const PROVINCE_ID = PROV.id;
+let PROVINCE_ID; // gán trong run()
+
+async function resolveProvinceId(name) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    const { rows } = await pool.query(
+      "SELECT id FROM provinces_new WHERE name = $1",
+      [name.normalize("NFC")],
+    );
+    if (rows.length !== 1) {
+      const all = await pool.query(
+        "SELECT id, name FROM provinces_new ORDER BY id",
+      );
+      console.error(
+        `Tìm thấy ${rows.length} dòng cho "${name}". Các tỉnh trong DB:`,
+      );
+      console.table(all.rows);
+      process.exit(1);
+    }
+    return rows[0].id;
+  } finally {
+    await pool.end();
+  }
+}
 const TEST_SET_PATH =
   process.env.TEST_SET_PATH || path.join(__dirname, "../data", PROV.testSet);
 const QUESTION_START = process.env.QUESTION_START
@@ -206,13 +230,10 @@ function createRateLimiter(requestsPerMinute) {
 }
 
 // ============ GỌI API 1 CÂU HỎI (có retry nếu bị rate limit / service bận) ============
-async function callAskApi(
-  question,
-  model,
-  provider,
-  provinceId = 1,
-  attempt = 0,
-) {
+async function callAskApi(question, model, provider, provinceId, attempt = 0) {
+  if (provinceId == null) {
+    throw new Error("callAskApi thiếu provinceId");
+  }
   const MAX_RETRIES = 3;
   const startTime = Date.now();
   try {
@@ -408,6 +429,7 @@ function buildResultRow(q, model, result) {
 
     model,
     llm_provider: LLM_PROVIDER,
+    province_code: PROVINCE_CODE,
     province_id: PROVINCE_ID,
 
     answer_type: result.answer_type,
@@ -642,6 +664,10 @@ async function warmUp() {
 }
 
 async function run() {
+  PROVINCE_ID = await resolveProvinceId(PROV.name);
+  console.log(
+    `${PROVINCE_CODE} (${PROV.name}) -> provinces_new.id = ${PROVINCE_ID} trên DB này`,
+  );
   await warmUp();
   if (!fs.existsSync(TEST_SET_PATH)) {
     console.error(`Không tìm thấy file: ${TEST_SET_PATH}`);
@@ -694,7 +720,6 @@ async function run() {
     ((Date.now() - runStartedAt) / 1000).toFixed(1),
   );
   allStats.forEach((s) => (s.run_total_elapsed_sec = totalElapsedSec));
-  appendSummaryRows(allStats);
   appendSummaryRows(allStats);
 
   console.log("\n=== HOÀN TẤT LƯỢT CHẠY NÀY ===");
