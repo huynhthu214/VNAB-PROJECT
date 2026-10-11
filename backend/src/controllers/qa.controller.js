@@ -808,6 +808,31 @@ async function tryModularRAG(question, provider = "gemini", provinceId = null) {
 
 // ============ POST /qa/ask ============
 let validProvinceIdsCache = null;
+// Tra id tỉnh theo MÃ (HCM, VL...). Mã là khóa ổn định giữa các máy; id thì khác nhau theo từng DB.
+// Cần cột provinces_new.code (xem migration trong tài liệu). Chưa có cột -> trả null (không cache).
+let provinceCodeCache = null;
+async function getProvinceIdByCode(code) {
+  if (!provinceCodeCache) {
+    try {
+      const { rows } = await pool.query(
+        "SELECT id, code FROM provinces_new WHERE code IS NOT NULL",
+      );
+      provinceCodeCache = new Map(
+        rows.map((r) => [String(r.code).toUpperCase(), Number(r.id)]),
+      );
+    } catch (err) {
+      if (err.code === "42703") {
+        console.error(
+          "provinces_new chưa có cột code — chạy migration thêm cột code.",
+        );
+        return null;
+      }
+      throw err;
+    }
+  }
+  return provinceCodeCache.get(String(code).trim().toUpperCase()) ?? null;
+}
+
 async function getValidProvinceIds() {
   if (!validProvinceIdsCache) {
     const { rows } = await pool.query("SELECT id FROM provinces_new");
@@ -818,7 +843,14 @@ async function getValidProvinceIds() {
 
 async function ask(req, res) {
   try {
-    const { question, session_id, llm_provider, model, province_id } = req.body;
+    const {
+      question,
+      session_id,
+      llm_provider,
+      model,
+      province_id,
+      province_code,
+    } = req.body;
 
     const VALID_PROVIDERS = Object.keys(PROVIDERS); // tự động lấy đúng danh sách provider thật sự tồn tại
 
@@ -836,7 +868,24 @@ async function ask(req, res) {
 
     const VALID_PROVINCE_IDS = await getValidProvinceIds();
     let provinceId = null;
-    if (province_id !== undefined && province_id !== null) {
+    // Ưu tiên province_code (HCM, VL...); province_id (số) vẫn được hỗ trợ để tương thích ngược.
+    if (
+      province_code !== undefined &&
+      province_code !== null &&
+      province_code !== ""
+    ) {
+      provinceId = await getProvinceIdByCode(province_code);
+      if (provinceId === null) {
+        return res
+          .status(400)
+          .json(
+            fail(
+              `province_code "${province_code}" không hợp lệ hoặc chưa được cấu hình trong DB`,
+              "VALIDATION_ERROR",
+            ),
+          );
+      }
+    } else if (province_id !== undefined && province_id !== null) {
       provinceId = Number(province_id);
       if (!VALID_PROVINCE_IDS.includes(provinceId)) {
         return res
@@ -927,6 +976,8 @@ async function ask(req, res) {
           confidence: 0,
           sources: [],
           qa_log_id: qaLogId,
+          input_tokens: result.input_tokens ?? null,
+          output_tokens: result.output_tokens ?? null,
           suggestion:
             "Câu hỏi nằm ngoài phạm vi dữ liệu hệ thống hiện có (TP.HCM sau sắp xếp).",
         },

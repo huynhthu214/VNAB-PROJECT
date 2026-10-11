@@ -10,6 +10,12 @@
 // Nếu cùng (tỉnh, provider, model) có nhiều lượt chạy -> chỉ lấy lượt MỚI NHẤT.
 // Lưu ý: "pass" ở đây là chấm TỰ ĐỘNG (must_contain / must_not_contain...) từ runBatchTest.js,
 // chưa thay thế bước chấm tay 5 nhãn. Dòng API_ERROR (pass = null) bị loại khỏi mẫu số.
+//
+// TOKEN: nếu file results_* có cột input_tokens / output_tokens (runBatchTest.js bản mới) thì mỗi
+// bảng có thêm: llm_call_cau (số câu có gọi LLM), avg_input_tokens / avg_output_tokens (TB trên các
+// câu CÓ gọi LLM), tong_input_tokens, tong_output_tokens, tong_token, token_moi_cau_dung
+// (tổng token / số câu đúng — chi phí token cho 1 câu trả lời đúng).
+// File results cũ (chưa có cột token) -> các cột token để trống/0, không lỗi.
 
 const fs = require("fs");
 const path = require("path");
@@ -21,7 +27,10 @@ function getArg(name, def) {
 }
 
 const ROOT = path.resolve(
-  getArg("--root", path.join(__dirname, "../data/batch_results/official_batch")),
+  getArg(
+    "--root",
+    path.join(__dirname, "../data/batch_results/official_batch"),
+  ),
 );
 const PROVIDER_FILTER = getArg("--provider", null);
 const OUT_PATH = path.join(ROOT, "..", "accuracy_by_province.xlsx");
@@ -33,7 +42,8 @@ function walk(dir) {
   });
 }
 
-const FILE_RE = /^results_([a-z0-9]+)_([a-z_0-9]+?)_(\d{4}-\d{2}-\d{2}T[\d-]+Z?)\.xlsx$/i;
+const FILE_RE =
+  /^results_([a-z0-9]+)_([a-z_0-9]+?)_(\d{4}-\d{2}-\d{2}T[\d-]+Z?)\.xlsx$/i;
 
 const files = walk(ROOT)
   .map((p) => ({ p, m: path.basename(p).match(FILE_RE) }))
@@ -59,21 +69,48 @@ for (const f of files) {
   if (!prev || f.ts > prev.ts) runs.set(key, { ...f, provinceId, rows });
 }
 
-const isBool = (v) => v === true || v === false || v === "TRUE" || v === "FALSE";
+const isBool = (v) =>
+  v === true || v === false || v === "TRUE" || v === "FALSE";
 const isPass = (v) => v === true || v === "TRUE";
+const toNum = (v) => {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
 
 function stat(rows) {
   const valid = rows.filter((r) => isBool(r.pass));
   const pass = valid.filter((r) => isPass(r.pass)).length;
   const apiErr = rows.filter((r) => !isBool(r.pass)).length;
-  const times = rows.map((r) => Number(r.response_time_ms)).filter(Number.isFinite);
+  const times = rows
+    .map((r) => Number(r.response_time_ms))
+    .filter(Number.isFinite);
+  // token: chỉ tính các câu CÓ gọi LLM (token != null); câu structured/lỗi không kéo trung bình xuống 0
+  const llm = rows.filter(
+    (r) => toNum(r.input_tokens) !== null || toNum(r.output_tokens) !== null,
+  );
+  const sumTok = (k) => llm.reduce((a, r) => a + (toNum(r[k]) || 0), 0);
+  const tin = sumTok("input_tokens");
+  const tout = sumTok("output_tokens");
   return {
     tong_cau: rows.length,
     loi_ha_tang: apiErr,
     mau_so: valid.length,
     dung: pass,
-    accuracy_pct: valid.length ? +((pass / valid.length) * 100).toFixed(1) : null,
-    avg_ms: times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : null,
+    accuracy_pct: valid.length
+      ? +((pass / valid.length) * 100).toFixed(1)
+      : null,
+    avg_ms: times.length
+      ? Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+      : null,
+    llm_call_cau: llm.length,
+    avg_input_tokens: llm.length ? Math.round(tin / llm.length) : null,
+    avg_output_tokens: llm.length ? Math.round(tout / llm.length) : null,
+    tong_input_tokens: tin,
+    tong_output_tokens: tout,
+    tong_token: tin + tout,
+    token_moi_cau_dung:
+      llm.length && pass ? Math.round((tin + tout) / pass) : null,
   };
 }
 
@@ -109,13 +146,16 @@ for (const r of sorted) {
 }
 
 // Bảng gộp 7 tỉnh (loại province_id = 1) theo model, để so với TP.HCM
-const nOther = new Set(sorted.filter((r) => Number(r.provinceId) !== 1).map((r) => r.provinceId)).size;
+const nOther = new Set(
+  sorted.filter((r) => Number(r.provinceId) !== 1).map((r) => r.provinceId),
+).size;
 const pooled = [];
 for (const model of MODEL_ORDER) {
   const rows = sorted
     .filter((r) => r.model === model && Number(r.provinceId) !== 1)
     .flatMap((r) => r.rows);
-  if (rows.length) pooled.push({ nhom: `${nOther} tỉnh khác (gộp)`, model, ...stat(rows) });
+  if (rows.length)
+    pooled.push({ nhom: `${nOther} tỉnh khác (gộp)`, model, ...stat(rows) });
 }
 for (const model of MODEL_ORDER) {
   const rows = sorted
@@ -126,12 +166,26 @@ for (const model of MODEL_ORDER) {
 
 console.log("\n=== Accuracy theo tỉnh x model ===");
 console.table(byModel.map(({ file, ...rest }) => rest));
-console.log("\n=== TP.HCM vs 7 tỉnh gộp (báo cáo riêng, đừng gộp thành 1 con số) ===");
+console.log(
+  "\n=== TP.HCM vs 7 tỉnh gộp (báo cáo riêng, đừng gộp thành 1 con số) ===",
+);
 console.table(pooled);
 
 const wb = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(byModel), "TinhxModel");
-XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(byCategory), "TinhxModelxNhom");
-XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pooled), "TPHCM_vs_7Tinh");
+XLSX.utils.book_append_sheet(
+  wb,
+  XLSX.utils.json_to_sheet(byModel),
+  "TinhxModel",
+);
+XLSX.utils.book_append_sheet(
+  wb,
+  XLSX.utils.json_to_sheet(byCategory),
+  "TinhxModelxNhom",
+);
+XLSX.utils.book_append_sheet(
+  wb,
+  XLSX.utils.json_to_sheet(pooled),
+  "TPHCM_vs_7Tinh",
+);
 XLSX.writeFile(wb, OUT_PATH);
 console.log(`\nĐã ghi: ${OUT_PATH}`);

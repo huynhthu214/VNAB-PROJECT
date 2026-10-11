@@ -35,19 +35,39 @@ const RUN_ID = new Date().toISOString().replace(/[:.]/g, "-");
 const PROMPT_VERSION = process.env.PROMPT_VERSION || "v2";
 let PROVINCE_ID; // gán trong run()
 
-async function resolveProvinceId(name) {
+// Tra id tỉnh trên DB của MÁY NÀY theo mã tỉnh (cột provinces_new.code). Nếu DB chưa có cột code
+// hoặc chưa gán mã cho tỉnh này thì tra theo tên (cảnh báo) để không chặn việc chạy batch.
+async function resolveProvinceId(code, name) {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
-    const { rows } = await pool.query(
-      "SELECT id FROM provinces_new WHERE name = $1",
-      [name.normalize("NFC")],
-    );
+    let rows = [];
+    let hasCodeColumn = true;
+    try {
+      ({ rows } = await pool.query(
+        "SELECT id FROM provinces_new WHERE code = $1",
+        [code],
+      ));
+    } catch (err) {
+      if (err.code !== "42703") throw err; // 42703 = cột code chưa tồn tại
+      hasCodeColumn = false;
+    }
+    if (rows.length === 0) {
+      console.warn(
+        hasCodeColumn
+          ? `provinces_new chưa có dòng nào code = "${code}" -> tra theo tên "${name}".`
+          : `provinces_new chưa có cột code -> tra theo tên "${name}".`,
+      );
+      ({ rows } = await pool.query(
+        "SELECT id FROM provinces_new WHERE name = $1",
+        [name.normalize("NFC")],
+      ));
+    }
     if (rows.length !== 1) {
       const all = await pool.query(
         "SELECT id, name FROM provinces_new ORDER BY id",
       );
       console.error(
-        `Tìm thấy ${rows.length} dòng cho "${name}". Các tỉnh trong DB:`,
+        `Tìm thấy ${rows.length} dòng cho ${code} / "${name}". Các tỉnh trong DB:`,
       );
       console.table(all.rows);
       process.exit(1);
@@ -248,6 +268,8 @@ async function callAskApi(question, model, provider, provinceId, attempt = 0) {
       answer_type: res.data?.data?.answer_type || null,
       confidence: res.data?.data?.confidence ?? null,
       qa_log_id: res.data?.data?.qa_log_id ?? null,
+      input_tokens: res.data?.data?.input_tokens ?? null,
+      output_tokens: res.data?.data?.output_tokens ?? null,
       response_time_ms: Date.now() - startTime,
       error: null,
     };
@@ -279,6 +301,8 @@ async function callAskApi(question, model, provider, provinceId, attempt = 0) {
       answer_type: null,
       confidence: null,
       qa_log_id: null,
+      input_tokens: null,
+      output_tokens: null,
       response_time_ms: Date.now() - startTime,
       error: errorCode || err.message,
     };
@@ -437,6 +461,14 @@ function buildResultRow(q, model, result) {
     confidence: result.confidence,
     response_time_ms: result.response_time_ms,
 
+    // null = câu không gọi LLM (rule_based, modular nhánh structured) hoặc lỗi
+    input_tokens: result.input_tokens ?? null,
+    output_tokens: result.output_tokens ?? null,
+    total_tokens:
+      result.input_tokens == null && result.output_tokens == null
+        ? null
+        : (result.input_tokens ?? 0) + (result.output_tokens ?? 0),
+
     success: result.success,
     error: result.error,
 
@@ -544,6 +576,11 @@ async function runModel(model, questions, tempJsonlPath) {
   const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
   const rows = readJsonLines(tempJsonlPath);
   const elapsed = Number(((Date.now() - startedAt) / 1000).toFixed(1));
+  // Chỉ tính các câu CÓ gọi LLM (token != null); câu structured/no-LLM không kéo trung bình xuống 0
+  const llmRows = rows.filter(
+    (r) => r.input_tokens != null || r.output_tokens != null,
+  );
+  const sumTok = (key) => llmRows.reduce((sum, r) => sum + (r[key] || 0), 0);
   const stats = {
     run_id: RUN_ID,
     prompt_version: PROMPT_VERSION,
@@ -567,6 +604,16 @@ async function runModel(model, questions, tempJsonlPath) {
       rows.reduce((sum, r) => sum + (r.response_time_ms || 0), 0) / rows.length,
     ),
     total_elapsed_sec: elapsed,
+    llm_call_questions: llmRows.length,
+    avg_input_tokens: llmRows.length
+      ? Math.round(sumTok("input_tokens") / llmRows.length)
+      : null,
+    avg_output_tokens: llmRows.length
+      ? Math.round(sumTok("output_tokens") / llmRows.length)
+      : null,
+    total_input_tokens: sumTok("input_tokens"),
+    total_output_tokens: sumTok("output_tokens"),
+    total_tokens: sumTok("input_tokens") + sumTok("output_tokens"),
     timestamp: new Date().toISOString(),
   };
 
@@ -575,6 +622,9 @@ async function runModel(model, questions, tempJsonlPath) {
   );
   console.log(
     `    pass THẬT (đã loại API_ERROR): ${stats.pass_count}/${stats.valid_count} | success: ${stats.success_count}/${stats.total_questions} | rag_generated: ${stats.answer_rag_generated} | structured: ${stats.answer_structured_lookup} | no_answer: ${stats.answer_no_answer} | lỗi: ${stats.error_count}`,
+  );
+  console.log(
+    `    token: ${stats.llm_call_questions} câu gọi LLM | TB input: ${stats.avg_input_tokens ?? "-"} | TB output: ${stats.avg_output_tokens ?? "-"} | tổng: ${stats.total_tokens}`,
   );
 
   return stats;
@@ -623,6 +673,12 @@ function appendSummaryRows(newRows) {
     { wch: 18 },
     { wch: 16 },
     { wch: 22 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 14 },
   ];
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Summary");
@@ -664,7 +720,7 @@ async function warmUp() {
 }
 
 async function run() {
-  PROVINCE_ID = await resolveProvinceId(PROV.name);
+  PROVINCE_ID = await resolveProvinceId(PROVINCE_CODE, PROV.name);
   console.log(
     `${PROVINCE_CODE} (${PROV.name}) -> provinces_new.id = ${PROVINCE_ID} trên DB này`,
   );

@@ -15,6 +15,8 @@
 //
 // Mỗi dòng = 1 (tỉnh, câu hỏi, model). 4 model của cùng 1 câu nằm LIỀN NHAU để so sánh.
 // Cột "nhan_goi_y" là gợi ý tự động; bạn điền "nhan_cham_tay" (dropdown) theo quyết định của bạn.
+// Hai cột input_tokens / output_tokens (lấy từ file results_*, để trống nếu câu không gọi LLM) nằm
+// CUỐI bảng (cột P, Q) để không đổi vị trí cột M/N (dropdown) -> aggregateManual.js đọc được để tổng hợp token.
 
 const fs = require("fs");
 const path = require("path");
@@ -189,6 +191,8 @@ async function writeSheet(all, OUT) {
     { header: "nhan_cham_tay", key: "nhan_cham_tay", width: 18 },
     { header: "nhom_loi", key: "nhom_loi", width: 26 },
     { header: "ghi_chu", key: "ghi_chu", width: 36 },
+    { header: "input_tokens", key: "input_tokens", width: 13 },
+    { header: "output_tokens", key: "output_tokens", width: 13 },
   ];
   ws.getRow(1).font = { bold: true };
   ws.getRow(1).fill = {
@@ -214,6 +218,8 @@ async function writeSheet(all, OUT) {
       nhan_cham_tay: "",
       nhom_loi: "",
       ghi_chu: "",
+      input_tokens: r.input_tokens ?? "",
+      output_tokens: r.output_tokens ?? "",
     });
     row.alignment = { wrapText: true, vertical: "top" };
     // kẻ đường phân cách giữa các câu hỏi
@@ -243,7 +249,7 @@ async function writeSheet(all, OUT) {
     formulae: [`DanhSach!$A$1:$A$${CAUSES.length}`],
   });
 
-  ws.autoFilter = { from: "A1", to: "O1" };
+  ws.autoFilter = { from: "A1", to: "Q1" };
   await wb.xlsx.writeFile(OUT);
   const nQ = new Set(all.map((r) => `${r.province_id}|${r.test_id}`)).size;
   console.log(

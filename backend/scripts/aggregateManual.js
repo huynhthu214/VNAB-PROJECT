@@ -13,6 +13,10 @@
 //   - accuracy_nghiem = (Đúng + No_answer hợp lệ) / mẫu số
 //   - accuracy_noi    = (Đúng + No_answer hợp lệ + Một phần) / mẫu số   (tham khảo)
 // Dòng chưa điền nhan_cham_tay được báo cáo và KHÔNG tính.
+// TOKEN: nếu file chấm tay có cột input_tokens / output_tokens (buildGradingSheet.js bản mới) thì mọi
+// bảng có thêm llm_call_cau, avg_input_tokens, avg_output_tokens, tong_token và token_moi_cau_dung
+// (tổng token / số câu Đúng + No_answer hợp lệ). Trung bình chỉ tính trên các câu CÓ gọi LLM.
+// File chấm tay tạo bằng bản cũ (không có cột token) -> cột token để trống, không lỗi.
 // Nhãn không thuộc 5 nhãn hợp lệ (gõ sai/dán sai) được CẢNH BÁO và không tính.
 // Dòng trùng (cùng tỉnh + test_id + model) giữa các file chỉ tính 1 lần (ưu tiên dòng đã chấm).
 
@@ -89,6 +93,12 @@ const unknown = gradedAny.filter(
 const graded = gradedAny.filter((r) => LABELS.includes(norm(r.nhan_cham_tay)));
 const pending = rows.length - gradedAny.length;
 
+const toNum = (v) => {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
 function stat(rs) {
   const c = (l) => rs.filter((r) => norm(r.nhan_cham_tay) === l).length;
   const dung = c("Đúng"),
@@ -98,6 +108,15 @@ function stat(rs) {
     loi = c("Lỗi hạ tầng");
   const mau = dung + sai + mp + na;
   const pct = (x) => (mau ? +((x / mau) * 100).toFixed(1) : null);
+  // token: chỉ tính dòng đã chấm có gọi LLM (token != null), loại "Lỗi hạ tầng"
+  const llm = rs.filter(
+    (r) =>
+      norm(r.nhan_cham_tay) !== "Lỗi hạ tầng" &&
+      (toNum(r.input_tokens) !== null || toNum(r.output_tokens) !== null),
+  );
+  const sumTok = (k) => llm.reduce((a, r) => a + (toNum(r[k]) || 0), 0);
+  const tin = sumTok("input_tokens");
+  const tout = sumTok("output_tokens");
   return {
     tong: rs.length,
     loi_ha_tang: loi,
@@ -108,6 +127,12 @@ function stat(rs) {
     sai,
     accuracy_nghiem_pct: pct(dung + na),
     accuracy_noi_pct: pct(dung + na + mp),
+    llm_call_cau: llm.length,
+    avg_input_tokens: llm.length ? Math.round(tin / llm.length) : null,
+    avg_output_tokens: llm.length ? Math.round(tout / llm.length) : null,
+    tong_token: tin + tout,
+    token_moi_cau_dung:
+      llm.length && dung + na ? Math.round((tin + tout) / (dung + na)) : null,
   };
 }
 const group = (rs, keyFn) => {
@@ -225,6 +250,14 @@ console.log(
 console.log(
   `Đã chấm ${gradedAny.length}/${rows.length} dòng (còn ${pending} dòng chưa chấm).`,
 );
+if (
+  !rows.some(
+    (r) => toNum(r.input_tokens) !== null || toNum(r.output_tokens) !== null,
+  )
+)
+  console.warn(
+    "LƯU Ý: không có dòng nào có token. File chấm tay có thể được tạo trước khi buildGradingSheet.js thêm cột input_tokens/output_tokens (hoặc batch chưa ghi token) -> các cột token để trống.",
+  );
 if (conflicts)
   console.warn(
     `CẢNH BÁO: ${conflicts} dòng trùng giữa các file nhưng nhãn KHÁC nhau (đã lấy dòng đọc trước).`,

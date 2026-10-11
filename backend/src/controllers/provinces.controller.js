@@ -1,6 +1,9 @@
 const pool = require("../config/db");
 const { success, fail } = require("../utils/response");
 
+// Mã tỉnh (cột provinces_new.code: HCM, VL...) là khóa ổn định giữa các máy/DB; id thì khác nhau theo DB.
+// Nếu DB chưa chạy migration thêm cột code (lỗi 42703) thì vẫn trả dữ liệu như cũ với code = null.
+
 // GET /provinces?page=&limit=
 async function list(req, res) {
   try {
@@ -11,13 +14,25 @@ async function list(req, res) {
     const countResult = await pool.query("SELECT COUNT(*) FROM provinces_new");
     const totalItems = parseInt(countResult.rows[0].count);
 
-    const { rows: provinces } = await pool.query(
-      `SELECT id, name AS new_name, effective_date
-       FROM provinces_new
-       ORDER BY name
-       LIMIT $1 OFFSET $2`,
-      [limit, offset],
-    );
+    let provinces;
+    try {
+      ({ rows: provinces } = await pool.query(
+        `SELECT id, code, name AS new_name, effective_date
+         FROM provinces_new
+         ORDER BY name
+         LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      ));
+    } catch (err) {
+      if (err.code !== "42703") throw err;
+      ({ rows: provinces } = await pool.query(
+        `SELECT id, NULL AS code, name AS new_name, effective_date
+         FROM provinces_new
+         ORDER BY name
+         LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      ));
+    }
 
     const items = [];
     for (const p of provinces) {
@@ -30,6 +45,7 @@ async function list(req, res) {
       );
       items.push({
         id: `province_${String(p.id).padStart(4, "0")}`,
+        code: p.code ?? null,
         new_name: p.new_name,
         old_provinces: oldOnes.map((o) => o.name),
         effective_date: p.effective_date,
@@ -53,20 +69,45 @@ async function list(req, res) {
   }
 }
 
-// GET /provinces/:id
+// GET /provinces/:id   (:id = "province_0017" | "17" | mã tỉnh như "VL")
 async function getById(req, res) {
   try {
-    const idNum = parseInt(req.params.id.replace("province_", ""));
-
-    const provinceResult = await pool.query(
-      `SELECT id, name AS new_name, effective_date FROM provinces_new WHERE id = $1`,
-      [idNum],
-    );
-    if (provinceResult.rows.length === 0) {
-      return res
+    const raw = String(req.params.id);
+    const notFound = () =>
+      res
         .status(404)
         .json(fail("Không tìm thấy tỉnh/thành", "PROVINCE_NOT_FOUND"));
+
+    let provinceResult;
+    if (/^[A-Za-z]{2,5}$/.test(raw)) {
+      // tra theo mã tỉnh
+      try {
+        provinceResult = await pool.query(
+          `SELECT id, code, name AS new_name, effective_date FROM provinces_new WHERE code = $1`,
+          [raw.toUpperCase()],
+        );
+      } catch (err) {
+        if (err.code !== "42703") throw err;
+        return notFound(); // DB chưa có cột code
+      }
+    } else {
+      const idNum = parseInt(raw.replace("province_", ""));
+      if (!Number.isInteger(idNum)) return notFound();
+      try {
+        provinceResult = await pool.query(
+          `SELECT id, code, name AS new_name, effective_date FROM provinces_new WHERE id = $1`,
+          [idNum],
+        );
+      } catch (err) {
+        if (err.code !== "42703") throw err;
+        provinceResult = await pool.query(
+          `SELECT id, NULL AS code, name AS new_name, effective_date FROM provinces_new WHERE id = $1`,
+          [idNum],
+        );
+      }
     }
+    if (provinceResult.rows.length === 0) return notFound();
+    const p = provinceResult.rows[0];
 
     const { rows: mappings } = await pool.query(
       `SELECT po.name AS old_name, pm.notes, ld.doc_code AS decision_number,
@@ -75,13 +116,13 @@ async function getById(req, res) {
        JOIN provinces_old po ON po.id = pm.old_province_id
        LEFT JOIN legal_documents ld ON ld.id = pm.decision_document_id
        WHERE pm.new_province_id = $1`,
-      [idNum],
+      [p.id],
     );
 
-    const p = provinceResult.rows[0];
     return res.status(200).json(
       success({
         id: `province_${String(p.id).padStart(4, "0")}`,
+        code: p.code ?? null,
         new_name: p.new_name,
         effective_date: p.effective_date,
         old_provinces: mappings.map((m) => ({
