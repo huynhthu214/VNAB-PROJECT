@@ -1,5 +1,6 @@
 const pool = require("../config/db");
 const { success, fail } = require("../utils/response");
+const { parseLegalRef, legalSuffix } = require("../utils/legalRef");
 const axios = require("axios");
 const {
   callLLM,
@@ -9,16 +10,26 @@ const {
   isConnectionError,
 } = require("../services/llmProviders");
 
-function extractKhoan(notes) {
-  const m = (notes || "").match(/Khoản\s+(\d+)/);
-  return m ? `Khoản ${m[1]}` : null;
+function uniqueSourcesFrom(rows) {
+  return [
+    ...new Map(
+      rows.map((r) => {
+        const s = buildSource(r);
+        return [`${s.document_id}|${s.section}`, s];
+      }),
+    ).values(),
+  ];
 }
 
 function buildSource(row) {
+  const { dieu, khoan } = parseLegalRef(row);
   return {
     document_id: row.doc_code || null,
     title: row.doc_title || null,
-    section: extractKhoan(row.notes),
+    section:
+      [dieu && `Điều ${dieu}`, khoan && `Khoản ${khoan}`]
+        .filter(Boolean)
+        .join(", ") || null,
     source_url: row.source_url || null,
   };
 }
@@ -202,7 +213,7 @@ async function tryOldUnitMatch(question, provinceId = null) {
   const { rows } = await pool.query(
     `SELECT o.id AS old_id, o.name AS old_name, o.parent_name, o.province_old,
             n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
-            m.merge_type,
+            m.merge_type, m.article_no, m.clause_no, m.point_no,
             d.doc_code, d.title AS doc_title, d.source_url, m.notes
      FROM admin_units_old o
      JOIN unit_mapping m ON m.old_unit_id = o.id
@@ -286,10 +297,10 @@ async function tryOldUnitMatch(question, provinceId = null) {
   let answer;
   if (matched.length === 1) {
     const r = matched[0];
-    answer = `${r.old_name} (cũ) hiện nay thuộc ${r.new_name}${r.doc_code ? `, theo ${r.doc_code}` : ""}.`;
+    answer = `${r.old_name} (cũ) hiện nay thuộc ${r.new_name}${legalSuffix([r])}.`;
   } else {
     const newNames = matched.map((r) => r.new_name).join(", ");
-    answer = `${bestOldName} (cũ) không nhập trọn vào 1 nơi mà được chia làm ${matched.length} phần: ${newNames}${matched[0].doc_code ? `, theo ${matched[0].doc_code}` : ""}.`;
+    answer = `${bestOldName} (cũ) không nhập trọn vào 1 nơi mà được chia làm ${matched.length} phần: ${newNames}${legalSuffix(matched)}.`;
   }
 
   return {
@@ -298,7 +309,7 @@ async function tryOldUnitMatch(question, provinceId = null) {
     answer_level: "unit",
     model_used: "rule_based",
     confidence: 0.95,
-    sources: matched.map(buildSource),
+    sources: uniqueSourcesFrom(matched),
   };
 }
 
@@ -306,14 +317,15 @@ async function tryNewUnitMatch(question, provinceId = null) {
   const { rows } = await pool.query(
     `SELECT n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
             o.name AS old_name, o.parent_name, m.merge_type,
-            d.doc_code, d.title AS doc_title, d.source_url, m.notes
+            d.doc_code, d.title AS doc_title, d.source_url, m.notes,
+            m.article_no, m.clause_no, m.point_no
      FROM admin_units_new n
      JOIN provinces_new pn ON pn.id = n.province_new_id
      JOIN unit_mapping m ON m.new_unit_id = n.id
      JOIN admin_units_old o ON o.id = m.old_unit_id
      LEFT JOIN legal_documents d ON d.id = m.decision_document_id
      WHERE $1 ILIKE '%' || n.name || '%'
-     ORDER BY length(n.name) DESC`,
+     ORDER BY length(n.name) DESC, (o.name LIKE 'Thị trấn%' OR o.name LIKE 'Phường%') DESC, o.name`,
     [question],
   );
   if (rows.length === 0) return null;
@@ -375,7 +387,7 @@ async function tryNewUnitMatch(question, provinceId = null) {
   if (toanBo.length) parts.push(`toàn bộ ${toanBo.join(", ")}`);
   if (motPhan.length)
     parts.push(`một phần diện tích của ${motPhan.join(", ")}`);
-  const answer = `${bestNewName} được hình thành từ ${parts.join(", cộng với ")}${matched[0].doc_code ? `, theo ${matched[0].doc_code}` : ""}.`;
+  const answer = `${bestNewName} được hình thành từ ${parts.join(", cộng với ")}${legalSuffix(matched)}.`;
 
   return {
     answer,
@@ -383,13 +395,14 @@ async function tryNewUnitMatch(question, provinceId = null) {
     answer_level: "unit",
     model_used: "rule_based",
     confidence: 0.95,
-    sources: matched.map(buildSource),
+    sources: uniqueSourcesFrom(matched),
   };
 }
 
 async function tryOldProvinceMatch(question) {
   const { rows } = await pool.query(
-    `SELECT po.name AS old_name, pn.name AS new_name,
+    `SELECT po.name AS old_name, pn.name AS new_name, 
+            pm.article_no, pm.clause_no, pm.point_no,
             d.doc_code, d.title AS doc_title, d.source_url, pm.notes
      FROM provinces_old po
      JOIN province_mapping pm ON pm.old_province_id = po.id
@@ -402,7 +415,7 @@ async function tryOldProvinceMatch(question) {
   );
   if (rows.length === 0) return null;
   const r = rows[0];
-  const answer = `${r.old_name} (cũ) hiện nay đã sáp nhập vào ${r.new_name}${r.doc_code ? `, theo ${r.doc_code}` : ""}.`;
+  const answer = `${r.old_name} (cũ) hiện nay đã sáp nhập vào ${r.new_name}${legalSuffix([r])}.`;
   return {
     answer,
     answer_type: "structured_lookup",
@@ -473,9 +486,11 @@ function buildSystemPrompt(context, provinceName) {
     : `Phạm vi tra cứu: các tỉnh khu vực miền Nam Việt Nam.`;
   return `Bạn là trợ lý tra cứu địa giới hành chính sau sắp xếp (1/7/2025).
 ${scope}
-Chỉ trả lời dựa trên đoạn văn bản được cung cấp dưới đây, không dùng kiến thức ngoài đoạn văn bản này.
-Trả lời bằng 1 câu hoàn chỉnh, có chủ ngữ - vị ngữ rõ ràng, nêu tên đơn vị cũ, tên đơn vị mới,
-và số hiệu văn bản pháp lý liên quan (VD: "Phường X (cũ) nay thuộc Phường Y, theo Nghị quyết ...").
+Trả lời ngắn gọn, tự nhiên như người đang giải thích, tối đa 2 câu. Nêu tên đơn vị cũ, tên đơn vị mới
+và căn cứ pháp lý theo dạng "khoản X Điều Y Nghị quyết Z" (VD: "Xã A được hình thành từ ..., theo khoản 61
+Điều 1 Nghị quyết 1654/NQ-UBTVQH15").
+Chỉ nêu điều, khoản, điểm khi dòng [Căn cứ: ...] hoặc đoạn văn bản có ghi rõ.
+Nếu chỉ có số hiệu văn bản thì chỉ nêu số hiệu, không tự suy ra hay đoán điều khoản.
 Nếu đoạn văn bản không đủ thông tin để trả lời câu hỏi, PHẢI trả lời đúng và chỉ đúng chuỗi: KHONG_CO_DU_LIEU
 
 Đoạn văn bản:
@@ -493,7 +508,10 @@ async function tryVectorSearch(
   const relevant = rows.filter((r) => r.similarity > 0.4); // Giảm nhẹ ngưỡng similarity xuống 0.4 để an toàn
   if (relevant.length === 0) return null;
 
-  const context = relevant.map((r) => r.content).join("\n---\n");
+  const withRef = (r) =>
+    `[Căn cứ: ${r.section_label ? r.section_label + ", " : ""}${r.doc_code}]\n${r.content}`;
+
+  const context = relevant.map(withRef).join("\n---\n");
   const systemPrompt = buildSystemPrompt(
     context,
     await getProvinceName(provinceId),
@@ -629,7 +647,10 @@ async function tryAdvancedRAG(
     };
   }
 
-  const context = reranked.map((c) => c.content).join("\n---\n");
+  const withRef = (r) =>
+    `[Căn cứ: ${r.section_label ? r.section_label + ", " : ""}${r.doc_code}]\n${r.content}`;
+
+  const context = reranked.map(withRef).join("\n---\n");
   const systemPrompt = buildSystemPrompt(
     context,
     await getProvinceName(provinceId),
@@ -687,8 +708,8 @@ async function tryAdvancedRAG(
 async function keywordSearch(question, provinceId = null) {
   const scope = chunkScope(provinceId, 2);
   const { rows } = await pool.query(
-    `SELECT c.id, c.content, d.doc_code, d.title, d.source_url,
-            ts_rank(c.content_tsv, plainto_tsquery('simple', $1)) AS rank
+    `SELECT c.id, c.content, c.section_label, d.doc_code, d.title, d.source_url,
+       ts_rank(c.content_tsv, plainto_tsquery('simple', $1)) AS rank
      FROM document_chunks c
      JOIN legal_documents d ON d.id = c.document_id
      WHERE c.content_tsv @@ plainto_tsquery('simple', $1)
@@ -759,7 +780,10 @@ async function tryModularRAG(question, provider = "gemini", provinceId = null) {
   const fusedChunks = await tryHybridRetrieval(question, provinceId);
   if (!fusedChunks || fusedChunks.length === 0) return null;
 
-  const context = fusedChunks.map((c) => c.content).join("\n---\n");
+  const withRef = (r) =>
+    `[Căn cứ: ${r.section_label ? r.section_label + ", " : ""}${r.doc_code}]\n${r.content}`;
+
+  const context = fusedChunks.map(withRef).join("\n---\n");
   const systemPrompt = buildSystemPrompt(
     context,
     await getProvinceName(provinceId),

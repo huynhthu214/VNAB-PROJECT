@@ -238,6 +238,15 @@ ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS section_label VARCHAR(50);
 ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS input_tokens INTEGER;
 ALTER TABLE qa_logs ADD COLUMN IF NOT EXISTS output_tokens INTEGER;
 
+ALTER TABLE unit_mapping
+  ADD COLUMN article_no SMALLINT,
+  ADD COLUMN clause_no  SMALLINT,
+  ADD COLUMN point_no   VARCHAR(2);
+
+ALTER TABLE province_mapping
+  ADD COLUMN article_no SMALLINT,
+  ADD COLUMN clause_no  SMALLINT,
+  ADD COLUMN point_no   VARCHAR(2);
 -- HẾT FILE — kiểm tra nhanh sau khi chạy:
 --   SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
 --   (phải thấy đủ 9 bảng: legal_documents, provinces_old, provinces_new,

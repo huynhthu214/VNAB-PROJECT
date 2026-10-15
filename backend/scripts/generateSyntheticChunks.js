@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { legalSuffix } = require("../src/utils/legalRef");
 const pool = require("../src/config/db");
 
 // Hai "document ảo" cố định để chứa các chunk tổng hợp tự động.
@@ -53,7 +54,8 @@ async function trimExtraChunks(documentId, keepCount) {
 async function generateOldToNew() {
   const { rows } = await pool.query(`
     SELECT o.id AS old_id, o.name AS old_name, o.parent_name, o.province_old,
-           n.name AS new_name, n.province_new_id, d.doc_code
+       n.name AS new_name, n.province_new_id, d.doc_code, d.title AS doc_title,
+       m.article_no, m.clause_no, m.point_no
     FROM admin_units_old o
     JOIN unit_mapping m ON m.old_unit_id = o.id
     JOIN admin_units_new n ON n.id = m.new_unit_id
@@ -71,19 +73,23 @@ async function generateOldToNew() {
         doc_code: r.doc_code,
         new_names: [],
         province_new_ids: new Set(),
+        rows: [],
       });
     }
     const g = grouped.get(r.old_id);
     g.new_names.push(r.new_name);
     g.province_new_ids.add(r.province_new_id);
+    g.rows.push(r);
   }
 
   let idx = 0;
   for (const g of grouped.values()) {
+    const prov = String(g.province_old || "").replace(/\s*\(cũ\)\s*$/i, "");
+    const suffix = legalSuffix(g.rows);
     const noiDung =
       g.new_names.length === 1
-        ? `${g.old_name}, ${g.parent_name}, ${g.province_old} (cũ) hiện nay thuộc ${g.new_names[0]}${g.doc_code ? `, theo ${g.doc_code}` : ""}.`
-        : `${g.old_name}, ${g.parent_name}, ${g.province_old} (cũ) hiện nay được chia thành ${g.new_names.length} phần, thuộc ${g.new_names.join(", ")}${g.doc_code ? `, theo ${g.doc_code}` : ""}.`;
+        ? `${g.old_name}, ${g.parent_name}, ${prov} (cũ) hiện nay thuộc ${g.new_names[0]}${suffix}.`
+        : `${g.old_name}, ${g.parent_name}, ${prov} (cũ) hiện nay được chia thành ${g.new_names.length} phần, thuộc ${g.new_names.join(", ")}${suffix}.`;
     // Nếu tất cả đơn vị mới đều thuộc CÙNG 1 tỉnh -> gán rõ province_new_id.
     // Nếu bị chia sang nhiều tỉnh khác nhau (hiếm) -> để NULL (chunk hiển thị ở mọi tab).
     const provinceNewId =
@@ -107,7 +113,8 @@ async function generateOldToNew() {
 async function generateNewToOld() {
   const { rows } = await pool.query(`
     SELECT n.id AS new_id, n.name AS new_name, n.province_new_id,
-           o.name AS old_name, o.parent_name, m.merge_type, d.doc_code
+       o.name AS old_name, o.parent_name, m.merge_type, d.doc_code, d.title AS doc_title,
+       m.article_no, m.clause_no, m.point_no
     FROM admin_units_new n
     JOIN unit_mapping m ON m.new_unit_id = n.id
     JOIN admin_units_old o ON o.id = m.old_unit_id
@@ -124,9 +131,11 @@ async function generateNewToOld() {
         doc_code: r.doc_code,
         toanBo: [],
         motPhan: [],
+        rows: [],
       });
     }
     const g = grouped.get(r.new_id);
+    g.rows.push(r);
     const label = `${r.old_name} (${r.parent_name})`;
     if (r.merge_type === "toan_bo") g.toanBo.push(label);
     else g.motPhan.push(label);
@@ -138,7 +147,7 @@ async function generateNewToOld() {
     if (g.toanBo.length) parts.push(`toàn bộ ${g.toanBo.join(", ")}`);
     if (g.motPhan.length)
       parts.push(`một phần diện tích của ${g.motPhan.join(", ")}`);
-    const noiDung = `${g.new_name} được hình thành từ ${parts.join(", cộng với ")}${g.doc_code ? `, theo ${g.doc_code}` : ""}.`;
+    const noiDung = `${g.new_name} được hình thành từ ${parts.join(", cộng với ")}${legalSuffix(g.rows)}.`;
     await upsertChunk(
       DOC_ID_NEW_TO_OLD,
       idx,
