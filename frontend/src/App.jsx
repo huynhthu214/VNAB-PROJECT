@@ -3,22 +3,34 @@ import "./App.css";
 
 /* =========================================================
    CẤU HÌNH API
-   TP.HCM (hasRealData: true) → gọi backend thật
-   7 tỉnh còn lại → mock (chưa có dữ liệu backend)
+   Tỉnh nào có apiCode (khớp cột provinces_new.code trong DB) → gọi backend thật
+   Tỉnh có apiCode: null → dùng mock (chưa batch-test / chưa có dữ liệu)
+   Muốn bật một tỉnh: điền apiCode của tỉnh đó trong MOCK_PROVINCES bên dưới.
    ========================================================= */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 function useLiveApi(provinceCode) {
-  return (
-    MOCK_PROVINCES.find((p) => p.code === provinceCode)?.hasRealData ?? false
-  );
+  return Boolean(MOCK_PROVINCES.find((p) => p.code === provinceCode)?.apiCode);
 }
 const MODEL_OPTIONS = [
-  { value: "rule_based", label: "Model 1: Rule-based" },
-  { value: "naive_rag", label: "Model 2: Naive RAG" },
-  { value: "advanced_rag", label: "Model 3: Advanced RAG" },
-  { value: "modular_rag", label: "Model 4: Modular RAG" },
+  { value: "rule_based", label: "Model 1: Rule-based", short: "Rule-based" },
+  { value: "naive_rag", label: "Model 2: Naive RAG", short: "Naive RAG" },
+  {
+    value: "advanced_rag",
+    label: "Model 3: Advanced RAG",
+    short: "Advanced RAG",
+  },
+  { value: "modular_rag", label: "Model 4: Modular RAG", short: "Modular RAG" },
 ];
+
+const ANSWER_TYPE_LABEL = {
+  structured_lookup: "Tra cứu trực tiếp",
+  rag_generated: "Tổng hợp từ văn bản",
+};
+
+function fmtNum(n) {
+  return typeof n === "number" ? n.toFixed(3) : String(n ?? "—");
+}
 
 /* =========================================================
    DANH SÁCH 8 TỈNH/THÀNH MIỀN NAM SAU SÁP NHẬP (Nghị quyết 202/2025/QH15)
@@ -28,49 +40,55 @@ const MOCK_PROVINCES = [
     code: "tphcm",
     name: "TP. Hồ Chí Minh",
     merged: "TP.HCM, Bình Dương, Bà Rịa - Vũng Tàu",
-    hasRealData: true,
+    apiCode: "HCM",
+    legalBasis: "Nghị quyết 1685/NQ-UBTVQH15",
+    samples: [
+      "Phường Bến Nghé cũ bây giờ là phường gì?",
+      "Phường Sài Gòn được sáp nhập từ những phường nào?",
+      "Phường Đa Kao cũ bây giờ thuộc phường nào?",
+    ],
   },
   {
     code: "dongnai",
     name: "Đồng Nai",
     merged: "Đồng Nai, Bình Phước",
-    hasRealData: false,
+    apiCode: "DN",
   },
   {
     code: "tayninh",
     name: "Tây Ninh",
     merged: "Tây Ninh, Long An",
-    hasRealData: false,
+    apiCode: "TN",
   },
   {
     code: "cantho",
     name: "Cần Thơ",
     merged: "Cần Thơ, Hậu Giang, Sóc Trăng",
-    hasRealData: false,
+    apiCode: "CT",
   },
   {
     code: "vinhlong",
     name: "Vĩnh Long",
     merged: "Vĩnh Long, Bến Tre, Trà Vinh",
-    hasRealData: false,
+    apiCode: "VL",
   },
   {
     code: "dongthap",
     name: "Đồng Tháp",
     merged: "Đồng Tháp, Tiền Giang",
-    hasRealData: false,
+    apiCode: "DT",
   },
   {
     code: "angiang",
     name: "An Giang",
     merged: "An Giang, Kiên Giang",
-    hasRealData: false,
+    apiCode: "AG",
   },
   {
     code: "camau",
     name: "Cà Mau",
     merged: "Cà Mau, Bạc Liêu",
-    hasRealData: false,
+    apiCode: "CM",
   },
 ];
 
@@ -322,14 +340,31 @@ function mockAsk(question, selectedProvince) {
 
 const DEFAULT_MODEL = "modular_rag";
 const DEFAULT_PROVIDER = "gemini";
-// id trong bảng provinces_new (khớp tiền tố "p1_" của mã đơn vị, vd p1_0073).
-// Chỉ khai báo tỉnh đã có dữ liệu thật; thêm tỉnh khác khi nó được batch-test.
-const PROVINCE_IDS = { tphcm: 1 };
+// Backend nhận province_code (mã viết tắt trong provinces_new.code) vì id số khác nhau giữa các máy.
+const QUESTION_MAX_LENGTH = 500; // khớp giới hạn ở qa.controller.js
+const GENERIC_LEGAL_BASIS =
+  "Nghị quyết 202/2025/QH15 và nghị quyết chi tiết cấp xã của tỉnh/thành";
+
+// Chuyển phản hồi lỗi của backend thành câu hiển thị cho người dùng
+function errorMessage(resp) {
+  switch (resp?.error_code) {
+    case "RATE_LIMITED": {
+      const sec = resp.retry_after_ms
+        ? Math.ceil(resp.retry_after_ms / 1000)
+        : null;
+      return `${resp.message}${sec ? ` (thử lại sau khoảng ${sec} giây)` : ""}`;
+    }
+    case "SERVICE_UNAVAILABLE":
+    case "VALIDATION_ERROR":
+      return resp.message;
+    default:
+      return "Hệ thống chưa trả lời được lúc này. Hãy thử lại sau ít phút, hoặc chọn nhà cung cấp LLM khác ở thanh phía trên.";
+  }
+}
 // Giá trị phải khớp khóa trong PROVIDERS của qa.controller.js (xem lệnh kiểm tra trong hướng dẫn)
 const PROVIDER_OPTIONS = [
-  { value: "gemini", label: "Gemini (mặc định)" },
-  { value: "groq", label: "Groq" },
-  { value: "openrouter", label: "OpenRouter" },
+  { value: "gemini", label: "Gemini" },
+  { value: "cohere", label: "Cohere" },
 ];
 const STORE_KEY = "vnab_conversations_v1";
 const UI_KEY = "vnab_ui_v1";
@@ -572,11 +607,12 @@ export default function App() {
 
   function suggestions() {
     if (isLive) {
-      return [
-        "Phường Bến Nghé cũ bây giờ là phường gì?",
-        "Phường Sài Gòn được sáp nhập từ những phường nào?",
-        "Phường Đa Kao cũ bây giờ thuộc phường nào?",
-      ];
+      if (currentProvince.samples) return currentProvince.samples;
+      return currentProvince.merged
+        .split(",")
+        .map((x) => x.trim())
+        .slice(0, 3)
+        .map((x) => `${x} cũ nay thuộc tỉnh, thành phố nào?`);
     }
     return MOCK_UNITS.filter((u) => u.province === selectedProvince)
       .slice(0, 3)
@@ -598,6 +634,7 @@ export default function App() {
     const q = (textOverride ?? chatInput).trim();
     if (!q || busy) return;
     const modelAtSend = model;
+    const provinceAtSend = currentProvince;
     // Model 1 (rule_based) không gọi LLM nên không gửi provider
     const providerAtSend = modelAtSend !== "rule_based" ? provider : undefined;
     const userMsg = { role: "user", kind: "text", content: q };
@@ -639,10 +676,16 @@ export default function App() {
             session_id: sessionId,
             model: modelAtSend,
             llm_provider: providerAtSend,
-            province_id: PROVINCE_IDS[selectedProvince],
+            province_code: provinceAtSend.apiCode,
           }),
         });
-        response = await r.json();
+        // 400/429/503 vẫn trả JSON chuẩn {success:false, error_code, message}
+        response = await r.json().catch(() => ({
+          success: false,
+          data: null,
+          message: `Máy chủ trả về lỗi ${r.status}.`,
+          error_code: "INTERNAL_ERROR",
+        }));
       } catch {
         response = {
           success: false,
@@ -677,17 +720,18 @@ export default function App() {
       botMsg = {
         role: "bot",
         kind: "no-answer",
-        content:
-          "Hệ thống chưa trả lời được lúc này. Hãy thử lại sau ít phút, hoặc chọn nhà cung cấp LLM khác ở thanh phía trên.",
+        content: errorMessage(response),
       };
     } else {
+      // backend gắn cứng "TP.HCM" trong suggestion nên tự dựng câu theo tỉnh đang chọn
       botMsg = {
         role: "bot",
         kind: "no-answer",
         content:
-          (response.data && response.data.suggestion) ||
-          response.message ||
-          "Chưa tìm được câu trả lời đủ tin cậy cho câu hỏi này.",
+          response.error_code === "NO_ANSWER_FOUND"
+            ? `Câu hỏi nằm ngoài phạm vi dữ liệu hệ thống hiện có (${provinceAtSend.name} sau sắp xếp).`
+            : response.message ||
+              "Chưa tìm được câu trả lời đủ tin cậy cho câu hỏi này.",
       };
     }
     updateConversation(convId, (c) => ({
@@ -699,12 +743,28 @@ export default function App() {
 
   // ---------- render ----------
   const showHero = messages.length === 0 && !isTyping;
+  const oldProvinces = currentProvince.merged.split(",").map((x) => x.trim());
+  const statusKind = !isLive
+    ? "idle"
+    : backendOk === true
+      ? "ok"
+      : backendOk === false
+        ? "bad"
+        : "wait";
+  const statusText = !isLive
+    ? "Đang dùng dữ liệu minh họa"
+    : backendOk === true
+      ? "Backend kết nối tốt"
+      : backendOk === false
+        ? "Backend không phản hồi"
+        : "Đang kiểm tra backend";
+  const nearLimit = chatInput.length >= QUESTION_MAX_LENGTH - 80;
 
   return (
     <div className={`shell ${sidebarOpen ? "drawer-open" : ""}`}>
       <aside className="sidebar" aria-label="Lịch sử trò chuyện">
         <div className="side-head">
-          <SealMark size={28} />
+          <SealMark size={30} />
           <div className="side-brand">
             <span className="brand-name">Địa giới hành chính</span>
             <span className="brand-sub">Khu vực miền Nam</span>
@@ -804,46 +864,33 @@ export default function App() {
                 key={p.code}
                 role="tab"
                 aria-selected={p.code === selectedProvince}
-                className={`pchip ${p.code === selectedProvince ? "on" : ""}`}
+                className={`ptab ${p.code === selectedProvince ? "on" : ""}`}
                 onClick={() => selectProvince(p.code)}
               >
-                <span className={`dot ${p.hasRealData ? "" : "mock"}`} />
+                <span className={`dot ${p.apiCode ? "" : "mock"}`} />
                 {p.name}
               </button>
             ))}
           </div>
         </div>
 
-        {!currentProvince.hasRealData && (
-          <div className="notice">
-            Dữ liệu của {currentProvince.name} là dữ liệu minh họa, chưa phải
-            ánh xạ pháp lý thật. Hãy chọn TP. Hồ Chí Minh để xem dữ liệu đã kiểm
-            chứng.
+        <div className="toolbar">
+          <div className="seg" role="radiogroup" aria-label="Mô hình trả lời">
+            {MODEL_OPTIONS.map((mo) => (
+              <button
+                key={mo.value}
+                role="radio"
+                aria-checked={model === mo.value}
+                className={`seg-btn ${model === mo.value ? "on" : ""}`}
+                onClick={() => setModel(mo.value)}
+                disabled={!isLive}
+                title={mo.label}
+              >
+                {mo.short}
+              </button>
+            ))}
           </div>
-        )}
-
-        <div className="tech-bar">
-          <span>
-            Dữ liệu: <b>{isLive ? "backend thật" : "mock"}</b>
-            {isLive && backendOk === true && " · backend kết nối tốt"}
-            {isLive && backendOk === false && " · backend không phản hồi"}
-          </span>
-          <span>Địa chỉ API: {isLive ? API_BASE_URL : "không dùng"}</span>
           <label>
-            Mô hình trả lời
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              disabled={!isLive}
-            >
-              {MODEL_OPTIONS.map((mo) => (
-                <option key={mo.value} value={mo.value}>
-                  {mo.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="tech-provider">
             Nhà cung cấp LLM
             <select
               value={provider}
@@ -857,26 +904,69 @@ export default function App() {
               ))}
             </select>
           </label>
+          <span
+            className={`status ${statusKind}`}
+            title={isLive ? `API: ${API_BASE_URL}` : undefined}
+          >
+            {statusText}
+          </span>
         </div>
+
+        {!isLive && (
+          <div className="notice">
+            Dữ liệu của {currentProvince.name} là dữ liệu minh họa, chưa phải
+            ánh xạ pháp lý thật.
+          </div>
+        )}
 
         <div className="chat-view">
           <div className="thread" ref={threadRef}>
             <div className="thread-inner">
               {showHero && (
                 <div className="hero">
-                  <h1>Bạn muốn tra cứu đơn vị hành chính nào?</h1>
-                  <p>
-                    Hỏi bằng câu tự nhiên về một phường hoặc xã cũ. Mỗi câu trả
-                    lời đi kèm căn cứ pháp lý để bạn đối chiếu.
+                  <h1>Tra cứu địa giới hành chính {currentProvince.name}</h1>
+                  <div
+                    className="lineage"
+                    aria-label={`${currentProvince.name} hợp nhất từ ${currentProvince.merged}`}
+                  >
+                    <div className="lineage-old">
+                      {oldProvinces.map((x) => (
+                        <span key={x} className="chip-old">
+                          {x}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="lineage-arrow" aria-hidden="true">
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <path
+                          d="M5 12h14M13 6l6 6-6 6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <span className="chip-new">{currentProvince.name}</span>
+                  </div>
+                  <p className="hero-lead">
+                    Nhập tên phường, xã cũ để biết nay thuộc đơn vị nào, hoặc
+                    hỏi ngược từ đơn vị mới. Mỗi câu trả lời có kèm căn cứ pháp
+                    lý để bạn đối chiếu.
                   </p>
                   <div className="suggest">
-                    {suggestions().map((s) => (
+                    {suggestions().map((sg) => (
                       <button
-                        key={s}
-                        onClick={() => sendChat(s)}
+                        key={sg}
+                        onClick={() => sendChat(sg)}
                         disabled={busy}
                       >
-                        {s}
+                        {sg}
                       </button>
                     ))}
                   </div>
@@ -891,11 +981,34 @@ export default function App() {
                 ) : (
                   <div key={i} className="turn bot">
                     <div className="avatar">
-                      <SealMark size={22} />
+                      <SealMark size={20} />
                     </div>
                     <div className="bot-body">
                       {m.kind === "no-answer" ? (
-                        <div className="no-answer">{m.content}</div>
+                        <div className="no-answer" role="status">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="9"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            />
+                            <path
+                              d="M12 7.5v5M12 16v.5"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          <span>{m.content}</span>
+                        </div>
                       ) : (
                         <div className="answer-text">
                           {formatAnswerText(m.content)}
@@ -909,22 +1022,40 @@ export default function App() {
                               <span className="sources-title">
                                 Căn cứ pháp lý
                               </span>
-                              {(m.sources || []).map((s, si) => {
-                                const label = `${s.title}${s.section ? `, ${s.section}` : ""}`;
+                              {(m.sources || []).map((src, si) => {
+                                const label = `${src.title}${src.section ? `, ${src.section}` : ""}`;
+                                const icon = (
+                                  <svg
+                                    width="13"
+                                    height="13"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    aria-hidden="true"
+                                  >
+                                    <path
+                                      d="M7 3h7l5 5v13H7z M14 3v5h5"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                );
                                 return /^https?:\/\//.test(
-                                  s.source_url || "",
+                                  src.source_url || "",
                                 ) ? (
                                   <a
                                     key={si}
                                     className="source-chip link"
-                                    href={s.source_url}
+                                    href={src.source_url}
                                     target="_blank"
                                     rel="noreferrer"
                                   >
+                                    {icon}
                                     {label}
                                   </a>
                                 ) : (
                                   <span key={si} className="source-chip">
+                                    {icon}
                                     {label}
                                   </span>
                                 );
@@ -932,27 +1063,49 @@ export default function App() {
                             </div>
                           )}
 
-                          <div className="tech-line">
-                            answer_type: {m.answerType} ·{" "}
-                            {m.modelUsed === "advanced_rag"
-                              ? "điểm rerank"
-                              : "confidence"}
-                            : {m.confidence}
-                            {m.modelUsed && ` · model: ${m.modelUsed}`}
-                            {m.providerUsed && ` · provider: ${m.providerUsed}`}
-                            {m.rewritten && (
-                              <div>Câu hỏi sau khi viết lại: {m.rewritten}</div>
-                            )}
-                          </div>
-
-                          <div className="actions">
+                          <div className="answer-foot">
+                            <span className={`badge ${m.answerType || ""}`}>
+                              {ANSWER_TYPE_LABEL[m.answerType] || m.answerType}
+                            </span>
                             <button
-                              className="ghost sm"
+                              className="ghost"
                               onClick={() => copyAnswer(i)}
                             >
                               {copiedIndex === i ? "Đã sao chép" : "Sao chép"}
                             </button>
                           </div>
+
+                          <details className="tech">
+                            <summary>Chi tiết kỹ thuật</summary>
+                            <dl className="tech-grid">
+                              <dt>answer_type</dt>
+                              <dd>{m.answerType}</dd>
+                              <dt>
+                                {m.modelUsed === "advanced_rag"
+                                  ? "Điểm rerank"
+                                  : "Độ tin cậy"}
+                              </dt>
+                              <dd>{fmtNum(m.confidence)}</dd>
+                              {m.modelUsed && (
+                                <>
+                                  <dt>Mô hình</dt>
+                                  <dd>{m.modelUsed}</dd>
+                                </>
+                              )}
+                              {m.providerUsed && (
+                                <>
+                                  <dt>Nhà cung cấp</dt>
+                                  <dd>{m.providerUsed}</dd>
+                                </>
+                              )}
+                              {m.rewritten && (
+                                <>
+                                  <dt>Câu viết lại</dt>
+                                  <dd>{m.rewritten}</dd>
+                                </>
+                              )}
+                            </dl>
+                          </details>
                         </>
                       )}
                     </div>
@@ -963,7 +1116,7 @@ export default function App() {
               {isTyping && (
                 <div className="turn bot">
                   <div className="avatar">
-                    <SealMark size={22} />
+                    <SealMark size={20} />
                   </div>
                   <div className="bot-body">
                     <div className="typing" aria-label="Đang trả lời">
@@ -982,6 +1135,7 @@ export default function App() {
               <textarea
                 ref={textareaRef}
                 rows={1}
+                maxLength={QUESTION_MAX_LENGTH}
                 placeholder={`Hỏi về một phường, xã cũ của ${currentProvince.name}...`}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -992,6 +1146,11 @@ export default function App() {
                   }
                 }}
               />
+              {nearLimit && (
+                <span className="counter near">
+                  {chatInput.length}/{QUESTION_MAX_LENGTH}
+                </span>
+              )}
               <button
                 className="send"
                 onClick={() => sendChat()}
@@ -1011,7 +1170,7 @@ export default function App() {
             </div>
             <p className="fineprint">
               {isLive
-                ? "Căn cứ: Nghị quyết 1685/NQ-UBTVQH15. Hãy đối chiếu văn bản gốc khi dùng cho thủ tục pháp lý."
+                ? `Căn cứ: ${currentProvince.legalBasis || GENERIC_LEGAL_BASIS}. Hãy đối chiếu văn bản gốc khi dùng cho thủ tục pháp lý.`
                 : "Đang dùng dữ liệu minh họa của tỉnh này."}
             </p>
           </div>
