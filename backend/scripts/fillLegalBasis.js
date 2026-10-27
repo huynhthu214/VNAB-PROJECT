@@ -83,12 +83,83 @@ function findUnchangedClause(clauses, key) {
   );
   return clauses.find((c) => re.test(c.body)) || null;
 }
+// Tên tỉnh trong DB sang cách NQ 202 viết: "TP. Hồ Chí Minh" -> "thành phố hồ chí minh"
+const provinceKey = (name) => norm(name).replace(/^tp\.?\s+/, "thành phố ");
 
+async function runProvince(clauses) {
+  const { rows: provinces } = await pool.query(
+    `SELECT DISTINCT pn.id, pn.name
+     FROM provinces_new pn
+     JOIN province_mapping pm ON pm.new_province_id = pn.id
+     JOIN legal_documents d ON d.id = pm.decision_document_id
+     WHERE d.doc_code = $1
+     ORDER BY pn.id`,
+    [DOC_CODE],
+  );
+
+  const plan = [];
+  const problems = [];
+  for (const p of provinces) {
+    const re = new RegExp(
+      `có tên gọi là\\s+${esc(provinceKey(p.name))}\\s*(?:[.,;]|$)`,
+      "u",
+    );
+    const hits = clauses.filter((c) => re.test(c.body));
+    if (hits.length !== 1) {
+      problems.push(`${p.name}: ${hits.length} khoản khớp`);
+      console.log(`LỖI ${p.name}: ${hits.length} khoản khớp (cần đúng 1)`);
+      continue;
+    }
+    const h = hits[0];
+    plan.push({ id: p.id, name: p.name, article: h.article, clause: h.clause });
+    console.log(`${p.name} -> khoản ${h.clause} Điều ${h.article}`);
+    console.log(`    ${h.body.slice(0, 110)}...`);
+  }
+
+  console.log(
+    `\nKkhớp ${plan.length}/${provinces.length}. ${problems.join("; ")}`,
+  );
+  if (!APPLY) {
+    console.log("Chế độ thử, chưa ghi DB. Thêm --apply để ghi.");
+    return;
+  }
+  if (problems.length) {
+    console.log("Có vấn đề nên không ghi DB.");
+    process.exit(1);
+  }
+  let total = 0;
+  for (const p of plan) {
+    const r = await pool.query(
+      `UPDATE province_mapping SET article_no = $1, clause_no = $2
+       WHERE new_province_id = $3
+         AND decision_document_id = (SELECT id FROM legal_documents WHERE doc_code = $4)`,
+      [p.article, p.clause, p.id, DOC_CODE],
+    );
+    total += r.rowCount;
+    console.log(`${p.name}: cập nhật ${r.rowCount} dòng`);
+  }
+  console.log(`Đã ghi vào DB, tổng ${total} dòng.`);
+}
 (async () => {
   const clauses = parseClauses(
     fs.readFileSync(TXT_PATH, "utf-8").normalize("NFC"),
   );
   console.log(`Đọc được ${clauses.length} khoản từ văn bản`);
+  const {
+    rows: [pc],
+  } = await pool.query(
+    `SELECT count(*)::int AS n FROM province_mapping pm
+     JOIN legal_documents d ON d.id = pm.decision_document_id
+     WHERE d.doc_code = $1`,
+    [DOC_CODE],
+  );
+  if (pc.n > 0) {
+    console.log(
+      `${DOC_CODE} là văn bản cấp tỉnh (${pc.n} dòng province_mapping)`,
+    );
+    await runProvince(clauses);
+    process.exit(0);
+  }
   console.log(
     "Đuôi 3 khoản đầu:",
     clauses
