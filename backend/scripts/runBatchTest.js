@@ -7,12 +7,12 @@ const { Pool } = require("pg");
 
 // ============ CẤU HÌNH — ĐỔI GIỮA CÁC LƯỢT CHẠY ============
 const LLM_PROVIDER = process.env.LLM_PROVIDER_OVERRIDE || "gemini"; // "gemini" | "cohere"
-const MODELS_TO_RUN = [
-  "rule_based",
-  "naive_rag",
-  "advanced_rag",
-  "modular_rag",
-];
+const ALL_MODELS = ["rule_based", "naive_rag", "advanced_rag", "modular_rag"];
+const MODELS_TO_RUN = process.env.MODELS_TO_RUN
+  ? process.env.MODELS_TO_RUN.split(",")
+      .map((s) => s.trim())
+      .filter((m) => ALL_MODELS.includes(m))
+  : ALL_MODELS;
 const PROVINCES = {
   HCM: { name: "TP. Hồ Chí Minh", testSet: "test_matrix_HCM.xlsx" },
   AG: { name: "Tỉnh An Giang", testSet: "test_matrix_AG.xlsx" },
@@ -87,10 +87,10 @@ const QUESTION_END = process.env.QUESTION_END
   : null;
 
 const API_BASE_URL = "http://localhost:3000/api/v1";
-const RESULTS_ROOT = path.join(
-  __dirname,
-  "../data/batch_results/official_batch",
-);
+const RESULTS_ROOT = process.env.RESULTS_ROOT
+  ? path.resolve(process.env.RESULTS_ROOT)
+  : path.join(__dirname, "../data/batch_results/official_batch");
+
 const RESULTS_DIR = path.join(RESULTS_ROOT, PROVINCE_CODE); // kết quả tách theo tỉnh
 const SUMMARY_PATH = path.join(RESULTS_ROOT, "timing_summary.xlsx"); // 1 file tổng hợp chung mọi tỉnh
 
