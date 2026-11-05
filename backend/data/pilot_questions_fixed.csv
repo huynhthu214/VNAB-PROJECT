@@ -1,0 +1,31 @@
+﻿test_id,category,question
+HCM-T2-04-1,T2_1_to_N,"Phường Tân Tạo, Quận Bình Tân trước đây nay được sắp xếp thành những đơn vị hành chính nào?"
+HCM-T2-02-3,T2_1_to_N,"Phường Sơn Kỳ, Quận Tân Phú được chia thành bao nhiêu đơn vị hành chính mới?"
+HCM-T2-25-1,T2_1_to_N,"Phường Chánh Mỹ, Thành phố Thủ Dầu Một trước đây nay được sắp xếp thành những đơn vị hành chính nào?"
+HCM-T2-16-3,T2_1_to_N,"Phường Phú Mỹ, Quận 7 được chia thành bao nhiêu đơn vị hành chính mới?"
+HCM-T1-13,T1_1_to_1,"Phường 3, Quận 3 nay thuộc đơn vị hành chính nào?"
+HCM-T1-01,T1_1_to_1,"Phường Bến Nghé, Quận 1 nay thuộc đơn vị hành chính nào?"
+HCM-T1-02,T1_1_to_1,"Phường Bến Thành, Quận 1 nay thuộc đơn vị hành chính nào?"
+HCM-T1-11,T1_1_to_1,"Phường 14, Quận 3 nay thuộc đơn vị hành chính nào?"
+HCM-T3-07,T3_N_to_1,"Phường Nhiêu Lộc, TP. Hồ Chí Minh được hình thành từ những đơn vị cũ nào?"
+HCM-T3-04,T3_N_to_1,"Phường Cầu Ông Lãnh, TP. Hồ Chí Minh được hình thành từ những đơn vị cũ nào?"
+HCM-T3-10,T3_N_to_1,"Phường Xóm Chiếu, TP. Hồ Chí Minh được hình thành từ những đơn vị cũ nào?"
+HCM-T3-09,T3_N_to_1,"Phường Vĩnh Hội, TP. Hồ Chí Minh được hình thành từ những đơn vị cũ nào?"
+HCM-T5-06,T5_new_to_old,"Trước sắp xếp, địa bàn của Phường Bàn Cờ, TP. Hồ Chí Minh gồm những đơn vị nào?"
+HCM-T5-04,T5_new_to_old,"Trước sắp xếp, địa bàn của Phường Cầu Ông Lãnh, TP. Hồ Chí Minh gồm những đơn vị nào?"
+HCM-T5-05,T5_new_to_old,"Trước sắp xếp, địa bàn của Phường Tân Định, TP. Hồ Chí Minh gồm những đơn vị nào?"
+HCM-T5-08,T5_new_to_old,"Trước sắp xếp, địa bàn của Phường Xuân Hòa, TP. Hồ Chí Minh gồm những đơn vị nào?"
+HCM-T6-01,T6_count,"Phường 16, Quận 8 được sắp xếp thành bao nhiêu đơn vị hành chính mới?"
+HCM-T6-04,T6_count,"Phường 15, Quận Tân Bình được sắp xếp thành bao nhiêu đơn vị hành chính mới?"
+HCM-T6-02,T6_count,"Phường Tân Tạo, Quận Bình Tân được sắp xếp thành bao nhiêu đơn vị hành chính mới?"
+HCM-T6-05,T6_count,"Phường 7, Quận 8 được sắp xếp thành bao nhiêu đơn vị hành chính mới?"
+HCM-T7-01,T7_typo_no_diacritic,"Phuong 16, Quan 8 nay thuoc nhung don vi nao?"
+HCM-T7-04,T7_typo_no_diacritic,Xa An Lap huyen Dau Tieng nay duoc chia vao dau?
+HCM-T7-02,T7_typo_no_diacritic,Phuong Tan Tao quan Binh Tan truoc day nay duoc sap xep ra sao?
+HCM-T7-05,T7_typo_no_diacritic,Phuong Cau Ong Lanh Quan 1 nay gom nhung phuong nao?
+HCM-T8-01,T8_ambiguous,Phường 15 cũ nay thuộc phường nào?
+HCM-T8-02,T8_out_of_scope,Giá đất của Phường 1 hiện nay là bao nhiêu?
+HCM-T4-05,T4_mot_phan,"Trong kết quả sắp xếp Xã An Lập, Huyện Dầu Tiếng, những đơn vị mới nào chỉ nhận một phần địa bàn?"
+HCM-T4-07,T4_mot_phan,"Trong kết quả sắp xếp Phường Cầu Ông Lãnh, Quận 1, những đơn vị mới nào chỉ nhận một phần địa bàn?"
+HCM-T4-14,T4_mot_phan,"Trong kết quả sắp xếp Phường Bình Hưng Hòa A, Quận Bình Tân, những đơn vị mới nào chỉ nhận một phần địa bàn?"
+HCM-T4-12,T4_mot_phan,"Trong kết quả sắp xếp Phường Phú Mỹ, Quận 7, những đơn vị mới nào chỉ nhận một phần địa bàn?"
