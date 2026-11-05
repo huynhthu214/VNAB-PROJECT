@@ -1,0 +1,180 @@
+[
+  {
+    "n": 1,
+    "test_id": "HCM-T1-08-r01",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, thuộc Thành phố Thủ Dầu Một, hiện nay trực thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9996451139450073,
+    "answer": "Phường Phú Hòa (Thành phố Thủ Dầu Một, Tỉnh Bình Dương cũ) hiện nay trực thuộc Phường Phú Lợi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 2,
+    "test_id": "HCM-T1-08-r02",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, thành phố Thủ Dầu Một hiện thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9995719790458679,
+    "answer": "Phường Phú Hòa, thành phố Thủ Dầu Một (tỉnh Bình Dương cũ) hiện thuộc Phường Phú Lợi. Điều này được quy định theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 3,
+    "test_id": "HCM-T1-08-r03",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, thuộc Thành phố Thủ Dầu Một, hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9998036026954651,
+    "answer": "Phường Phú Hòa (Thành phố Thủ Dầu Một, Tỉnh Bình Dương cũ) hiện nay thuộc Phường Phú Lợi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 4,
+    "test_id": "HCM-T1-08-r04",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, thuộc Thành phố Thủ Dầu Một, hiện nay trực thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9996451139450073,
+    "answer": "Phường Phú Hòa (Thành phố Thủ Dầu Một) hiện nay trực thuộc Phường Phú Lợi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 5,
+    "test_id": "HCM-T1-08-r05",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, thành phố Thủ Dầu Một hiện nay trực thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9996123909950256,
+    "answer": "Phường Phú Hòa (thành phố Thủ Dầu Một, tỉnh Bình Dương cũ) hiện nay thuộc Phường Phú Lợi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 6,
+    "test_id": "HCM-T1-08-r06",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, thuộc Thành phố Thủ Dầu Một, hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9998036026954651,
+    "answer": "Phường Phú Hòa (cũ, thuộc Thành phố Thủ Dầu Một, Tỉnh Bình Dương) hiện nay thuộc Phường Phú Lợi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 7,
+    "test_id": "HCM-T1-08-r07",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, thành phố Thủ Dầu Một hiện nay thuộc đơn vị hành chính quận/huyện nào?",
+    "rerank_top_score": 0.9993155002593994,
+    "answer": "Phường Phú Hòa (Thành phố Thủ Dầu Một, Tỉnh Bình Dương) hiện nay thuộc Phường Phú Lợi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 8,
+    "test_id": "HCM-T1-08-r08",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, Thành phố Thủ Dầu Một hiện thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9995415210723877,
+    "answer": "Đơn vị cũ là Phường Phú Hòa (Thành phố Thủ Dầu Một, tỉnh Bình Dương cũ) và đơn vị mới là Phường Phú Lợi. Căn cứ pháp lý: 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 9,
+    "test_id": "HCM-T1-08-r09",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, thuộc Thành phố Thủ Dầu Một, hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9998036026954651,
+    "answer": "Phường Phú Hòa (cũ) nay thuộc Phường Phú Lợi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 10,
+    "test_id": "HCM-T1-08-r10",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Phú Hòa, Thành phố Thủ Dầu Một hiện nay trực thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9995762705802917,
+    "answer": "Phường Phú Hòa (Thành phố Thủ Dầu Một, Tỉnh Bình Dương cũ) nay thuộc Phường Phú Lợi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 11,
+    "test_id": "HCM-T1-14-r01",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "no_answer",
+    "answer": null
+  },
+  {
+    "n": 12,
+    "test_id": "HCM-T1-14-r02",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Xã Cây Trường II, huyện Bàu Bàng hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9994556307792664,
+    "answer": "Xã Cây Trường II (đơn vị cũ) hiện nay thuộc Xã Trừ Văn Thố, theo 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 13,
+    "test_id": "HCM-T1-14-r03",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "no_answer",
+    "answer": null
+  },
+  {
+    "n": 14,
+    "test_id": "HCM-T1-14-r04",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Xã Cây Trường II, huyện Bàu Bàng hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9994556307792664,
+    "answer": "Xã Cây Trường II (xã cũ) hiện nay thuộc Xã Trừ Văn Thố, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 15,
+    "test_id": "HCM-T1-14-r05",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": false,
+    "error": "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút."
+  },
+  {
+    "n": 16,
+    "test_id": "HCM-T1-14-r06",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": false,
+    "error": "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút."
+  },
+  {
+    "n": 17,
+    "test_id": "HCM-T1-14-r07",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": false,
+    "error": "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút."
+  },
+  {
+    "n": 18,
+    "test_id": "HCM-T1-14-r08",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": false,
+    "error": "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút."
+  },
+  {
+    "n": 19,
+    "test_id": "HCM-T1-14-r09",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": false,
+    "error": "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút."
+  },
+  {
+    "n": 20,
+    "test_id": "HCM-T1-14-r10",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": false,
+    "error": "Hệ thống đang xử lý quá nhiều yêu cầu tới dịch vụ AI. Vui lòng thử lại sau ít phút."
+  }
+]

@@ -1,0 +1,119 @@
+[
+  {
+    "test_id": "HCM-T1-01",
+    "category": "T1_1_to_1",
+    "question": "Xã Phước Vĩnh An, Huyện Củ Chi nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Xã Củ Chi (toàn bộ)",
+    "must_contain": ["Xã Củ Chi"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-02",
+    "category": "T1_1_to_1",
+    "question": "Phường 11, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Nhiêu Lộc (toàn bộ)",
+    "must_contain": ["Phường Nhiêu Lộc"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-03",
+    "category": "T1_1_to_1",
+    "question": "Phường 5, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Bàn Cờ (toàn bộ)",
+    "must_contain": ["Phường Bàn Cờ"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T7-01",
+    "category": "T7_typo_no_diacritic",
+    "question": "Phuong Tan Quy, quan Tan Phu nay thuoc nhung don vi nao?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Phú Thọ Hòa (một phần); Phường Tân Sơn Nhì (một phần)",
+    "must_contain": ["Phường Phú Thọ Hòa", "Phường Tân Sơn Nhì"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T7-02",
+    "category": "T7_typo_no_diacritic",
+    "question": "Phuong Da Kao quan 1 truoc day nay duoc sap xep ra sao?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Sài Gòn (một phần); Phường Tân Định (một phần)",
+    "must_contain": ["Phường Sài Gòn", "Phường Tân Định"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T7-03",
+    "category": "T7_typo_no_diacritic",
+    "question": "Phuong An Phu thanh pho Thu Duc hien gio thuoc nhung don vi nao?",
+    "province_code": "HCM",
+    "expected_answer": "Phường An Khánh (một phần); Phường Bình Trưng (một phần)",
+    "must_contain": ["Phường An Khánh", "Phường Bình Trưng"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T7-04",
+    "category": "T7_typo_no_diacritic",
+    "question": "Phuong Long Thanh My thanh pho Thu Duc nay duoc chia vao dau?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Tăng Nhơn Phú (một phần); Phường Long Bình (một phần)",
+    "must_contain": ["Phường Tăng Nhơn Phú", "Phường Long Bình"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T7-05",
+    "category": "T7_typo_no_diacritic",
+    "question": "Phuong Tan Dong Hiep thanh pho Di An nay gom nhung don vi nao?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Dĩ An (một phần); Phường Tân Đông Hiệp (một phần)",
+    "must_contain": ["Phường Dĩ An", "Phường Tân Đông Hiệp"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T8-01",
+    "category": "T8_ambiguous",
+    "question": "Phường 1 cũ nay thuộc phường nào?",
+    "province_code": "HCM",
+    "expected_answer": "Yêu cầu người dùng bổ sung quận/huyện cũ vì tên 'Phường 1' không đủ để xác định duy nhất (trùng ở 28 quận/huyện).",
+    "must_contain": ["quận"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T8-02",
+    "category": "T8_ambiguous",
+    "question": "Phường 2 cũ bây giờ là phường nào?",
+    "province_code": "HCM",
+    "expected_answer": "Yêu cầu người dùng bổ sung quận/huyện cũ vì tên 'Phường 2' không đủ để xác định duy nhất (trùng ở 21 quận/huyện).",
+    "must_contain": ["quận"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T8-03",
+    "category": "T8_ambiguous",
+    "question": "Phường 5 hiện nay thuộc đơn vị nào?",
+    "province_code": "HCM",
+    "expected_answer": "Yêu cầu người dùng bổ sung quận/huyện cũ vì tên 'Phường 5' không đủ để xác định duy nhất (trùng ở 18 quận/huyện).",
+    "must_contain": ["quận"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T8-04",
+    "category": "T8_ambiguous",
+    "question": "Phường 14 sau sáp nhập gọi là gì?",
+    "province_code": "HCM",
+    "expected_answer": "Yêu cầu người dùng bổ sung quận/huyện cũ vì tên 'Phường 14' không đủ để xác định duy nhất (trùng ở 9 quận/huyện).",
+    "must_contain": ["quận"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T8-05",
+    "category": "T8_ambiguous",
+    "question": "Phường 11 giờ thuộc phường nào?",
+    "province_code": "HCM",
+    "expected_answer": "Yêu cầu người dùng bổ sung quận/huyện cũ vì tên 'Phường 11' không đủ để xác định duy nhất (trùng ở 9 quận/huyện).",
+    "must_contain": ["quận"],
+    "must_not_contain": []
+  }
+]

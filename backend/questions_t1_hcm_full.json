@@ -1,0 +1,122 @@
+[
+  {
+    "test_id": "HCM-T1-01",
+    "question": "Xã Phước Vĩnh An, Huyện Củ Chi nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Xã Củ Chi (toàn bộ)",
+    "must_contain": ["Xã Củ Chi"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-02",
+    "question": "Phường 11, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Nhiêu Lộc (toàn bộ)",
+    "must_contain": ["Phường Nhiêu Lộc"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-03",
+    "question": "Phường 5, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Bàn Cờ (toàn bộ)",
+    "must_contain": ["Phường Bàn Cờ"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-04",
+    "question": "Phường An Thạnh, Thành phố Thuận An nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Thuận An (toàn bộ)",
+    "must_contain": ["Phường Thuận An"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-05",
+    "question": "Phường 12, Quận Bình Thạnh nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Bình Thạnh (toàn bộ)",
+    "must_contain": ["Phường Bình Thạnh"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-06",
+    "question": "Phường 3, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Bàn Cờ (toàn bộ)",
+    "must_contain": ["Phường Bàn Cờ"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-07",
+    "question": "Phường 14, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Nhiêu Lộc (toàn bộ)",
+    "must_contain": ["Phường Nhiêu Lộc"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-08",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Phú Lợi (toàn bộ)",
+    "must_contain": ["Phường Phú Lợi"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-09",
+    "question": "Xã An Linh, Huyện Phú Giáo nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Xã An Long (toàn bộ)",
+    "must_contain": ["Xã An Long"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-10",
+    "question": "Phường 10, Quận Phú Nhuận nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Phú Nhuận (toàn bộ)",
+    "must_contain": ["Phường Phú Nhuận"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-11",
+    "question": "Phường Thạnh Xuân, Quận 12 nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Thới An (toàn bộ)",
+    "must_contain": ["Phường Thới An"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-12",
+    "question": "Thị trấn Đất Đỏ, Huyện Long Đất nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Xã Đất Đỏ (toàn bộ)",
+    "must_contain": ["Xã Đất Đỏ"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-13",
+    "question": "Phường 10, Quận Gò Vấp nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Gò Vấp (toàn bộ)",
+    "must_contain": ["Phường Gò Vấp"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-14",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Xã Trừ Văn Thố (toàn bộ)",
+    "must_contain": ["Xã Trừ Văn Thố"],
+    "must_not_contain": []
+  },
+  {
+    "test_id": "HCM-T1-15",
+    "question": "Phường An Tây, Thành phố Bến Cát nay thuộc đơn vị hành chính nào?",
+    "province_code": "HCM",
+    "expected_answer": "Phường Tây Nam (toàn bộ)",
+    "must_contain": ["Phường Tây Nam"],
+    "must_not_contain": []
+  }
+]

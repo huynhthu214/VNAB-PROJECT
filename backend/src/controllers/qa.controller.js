@@ -1,3 +1,4 @@
+const { safeRewrite } = require("../../safeRewrite");
 const pool = require("../config/db");
 const { success, fail } = require("../utils/response");
 const { parseLegalRef, legalSuffix } = require("../utils/legalRef");
@@ -9,6 +10,12 @@ const {
   RateLimitError,
   isConnectionError,
 } = require("../services/llmProviders");
+
+const fs = require("fs");
+function debugLog(entry) {
+  if (process.env.DEBUG_PROMPT_LOG !== "1") return;
+  fs.appendFileSync("prompt_debug.jsonl", JSON.stringify(entry) + "\n");
+}
 
 function uniqueSourcesFrom(rows) {
   return [
@@ -196,17 +203,28 @@ function isLikelyOutOfScopeTopic(question) {
 // Gộp logic chạy 3 hàm structured lookup theo đúng thứ tự ưu tiên (dùng
 // chung cho Model 1 và nhánh structured của Model 4 — trước đây 2 nơi
 // lặp lại y hệt đoạn code này, giờ gộp về 1 chỗ để tránh lệch nhau khi sửa).
-async function runStructuredLookup(question, provinceId) {
-  if (isLikelyOutOfScopeTopic(question)) return null;
+const { canonicalizeQuestion } = require("../utils/lookupNormalize");
 
+async function runStructuredLookup(
+  question,
+  provinceId,
+  modelName = "rule_based",
+) {
+  if (isLikelyOutOfScopeTopic(question)) return null;
   const aggIntent = isAggregationIntent(question);
+  const on = (process.env.LOOKUP_NORMALIZE || "")
+    .split(",")
+    .map((s) => s.trim());
+  const q = on.includes(modelName)
+    ? await canonicalizeQuestion(pool, question)
+    : question;
   return aggIntent
-    ? (await tryNewUnitMatch(question, provinceId)) ||
-        (await tryOldUnitMatch(question, provinceId)) ||
-        (await tryOldProvinceMatch(question))
-    : (await tryOldUnitMatch(question, provinceId)) ||
-        (await tryNewUnitMatch(question, provinceId)) ||
-        (await tryOldProvinceMatch(question));
+    ? (await tryNewUnitMatch(q, provinceId)) ||
+        (await tryOldUnitMatch(q, provinceId)) ||
+        (await tryOldProvinceMatch(q))
+    : (await tryOldUnitMatch(q, provinceId)) ||
+        (await tryNewUnitMatch(q, provinceId)) ||
+        (await tryOldProvinceMatch(q));
 }
 
 async function tryOldUnitMatch(question, provinceId = null) {
@@ -607,72 +625,127 @@ const RERANK_THRESHOLD = 0.9;
 // dung đúng chủ đề. Đã hiệu chỉnh từ pilot test (điểm quan sát 0.46-0.90).
 const RERANK_THRESHOLD_NEW2OLD = 0.45;
 
+// Giữ nguyên RERANK_THRESHOLD / RERANK_THRESHOLD_NEW2OLD đã có ở file. Thêm các dòng require/hàm phụ ở đầu file:
+//   const fs = require("fs");
+//   const { safeRewrite } = require("./safeRewrite");   // đặt safeRewrite.js cùng thư mục (hoặc sửa đường dẫn)
+//   function debugLog(entry) { if (process.env.DEBUG_PROMPT_LOG !== "1") return;
+//     fs.appendFileSync("prompt_debug.jsonl", JSON.stringify(entry) + "\n"); }
+//
+// Cờ môi trường (mặc định = hành vi Model 3 gốc, KHÔNG đổi kết quả cũ):
+//   M3_REWRITE=0         bỏ bước viết lại (dùng câu gốc)            -> biến thể 3b / 3c
+//   M3_SAFE_REWRITE=1    dùng câu gốc nếu rewrite mất tên/đổi cấp    -> "Model 3 + safeRewrite"
+//   M3_RERANK=0          bỏ rerank, dùng cosine (ngưỡng 0,4 như M2)  -> biến thể 3a / 3c
+//   M3_CONTEXT_K=n       số chunk đưa vào LLM (mặc định 12)
+//   M3_LLM_QUESTION=original   LLM nhận câu gốc thay vì câu viết lại
 async function tryAdvancedRAG(
   question,
   provider = "gemini",
   provinceId = null,
 ) {
-  const rw = await rewriteQuestion(question, provider);
-  const rewrittenQuestion = rw.rewritten;
-  let totalInputTokens = rw.input_tokens;
-  let totalOutputTokens = rw.output_tokens;
+  const useRewrite = process.env.M3_REWRITE !== "0";
+  const useRerank = process.env.M3_RERANK !== "0";
+  const ctxK = Number(process.env.M3_CONTEXT_K || 12);
 
-  const topN = await vectorSearchTopN(rewrittenQuestion, 20, provinceId);
-  if (topN.length === 0) {
-    return {
-      no_answer: true,
-      model_used: "advanced_rag",
-      rewritten_question: rewrittenQuestion,
-      rerank_top_score: null,
-      input_tokens: totalInputTokens,
-      output_tokens: totalOutputTokens,
-    };
+  let rewrittenQuestion = question;
+  let rewriteFallback = null;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  if (useRewrite) {
+    const rw = await rewriteQuestion(question, provider);
+    rewrittenQuestion = rw.rewritten;
+    totalInputTokens = rw.input_tokens;
+    totalOutputTokens = rw.output_tokens;
+    if (process.env.M3_SAFE_REWRITE === "1") {
+      const s = safeRewrite(question, rw.rewritten);
+      rewrittenQuestion = s.text;
+      rewriteFallback = s.fallback;
+    }
   }
 
-  const reranked = await rerankChunks(rewrittenQuestion, topN, 12);
-  const topChunk = reranked[0];
-  const effectiveThreshold =
-    topChunk?.doc_code === "SYNTHETIC-NEW2OLD"
-      ? RERANK_THRESHOLD_NEW2OLD
-      : RERANK_THRESHOLD;
+  const noAnswer = (reason, score) => ({
+    no_answer: true,
+    no_answer_reason: reason,
+    model_used: "advanced_rag",
+    rewritten_question: rewrittenQuestion,
+    rewrite_fallback: rewriteFallback,
+    rerank_top_score: score ?? null,
+    input_tokens: totalInputTokens,
+    output_tokens: totalOutputTokens,
+  });
 
-  if (!topChunk || topChunk.rerank_score < effectiveThreshold) {
-    return {
-      no_answer: true,
-      model_used: "advanced_rag",
+  let reranked;
+  if (useRerank) {
+    const topN = await vectorSearchTopN(rewrittenQuestion, 20, provinceId);
+    if (topN.length === 0) return noAnswer("no_chunks");
+    reranked = await rerankChunks(rewrittenQuestion, topN, ctxK);
+    const topChunk = reranked[0];
+    const synthAll = process.env.M3_SYNTH_ALL === "1";
+    const isSynthetic = synthAll
+      ? topChunk?.doc_code?.startsWith("SYNTHETIC-")
+      : topChunk?.doc_code === "SYNTHETIC-NEW2OLD";
+    const thr = isSynthetic ? RERANK_THRESHOLD_NEW2OLD : RERANK_THRESHOLD;
+    debugLog({
+      kind: "rerank_decision",
+      question,
       rewritten_question: rewrittenQuestion,
-      rerank_top_score: topChunk?.rerank_score ?? null,
-      input_tokens: totalInputTokens,
-      output_tokens: totalOutputTokens,
-    };
+      top_doc: topChunk?.doc_code,
+      top_score: topChunk?.rerank_score,
+      thr,
+      passed: topChunk && topChunk.rerank_score >= thr,
+    });
+    if (!topChunk || topChunk.rerank_score < thr) {
+      return noAnswer("below_threshold", topChunk?.rerank_score);
+    }
+  } else {
+    const rows = await vectorSearchTopN(rewrittenQuestion, ctxK, provinceId);
+    const relevant = rows.filter((r) => r.similarity > 0.4); // ngưỡng cosine của Model 2
+    if (relevant.length === 0)
+      return noAnswer("below_threshold", rows[0]?.similarity);
+    reranked = relevant.map((r) => ({ ...r, rerank_score: r.similarity }));
   }
 
   const withRef = (r) =>
     `[Căn cứ: ${r.section_label ? r.section_label + ", " : ""}${r.doc_code}]\n${r.content}`;
-
-  const context = reranked.map(withRef).join("\n---\n");
+  const context = reranked.slice(0, ctxK).map(withRef).join("\n---\n");
   const systemPrompt = buildSystemPrompt(
     context,
     await getProvinceName(provinceId),
   );
 
+  const llmQuestion =
+    process.env.M3_LLM_QUESTION === "original" ? question : rewrittenQuestion;
   const {
     text: llmAnswer,
     input_tokens: ansIn,
     output_tokens: ansOut,
-  } = await callLLM(provider, systemPrompt, rewrittenQuestion);
+  } = await callLLM(provider, systemPrompt, llmQuestion);
   totalInputTokens += ansIn ?? 0;
   totalOutputTokens += ansOut ?? 0;
-  if (!llmAnswer || llmAnswer.trim() === "KHONG_CO_DU_LIEU") {
-    return {
-      no_answer: true,
-      model_used: "advanced_rag",
-      rewritten_question: rewrittenQuestion,
-      rerank_top_score: reranked[0].rerank_score,
-      input_tokens: totalInputTokens,
-      output_tokens: totalOutputTokens,
-    };
-  }
+
+  debugLog({
+    ts: new Date().toISOString(),
+    provider,
+    question,
+    rewritten_question: rewrittenQuestion,
+    rewrite_fallback: rewriteFallback,
+    llm_question: llmQuestion,
+    flags: {
+      useRewrite,
+      useRerank,
+      ctxK,
+      safe: process.env.M3_SAFE_REWRITE === "1",
+    },
+    top_score: reranked[0].rerank_score,
+    top_doc: reranked[0].doc_code,
+    n_chunks: reranked.length,
+    llm_raw: llmAnswer,
+    context_head: context.slice(0, 1500),
+  });
+
+  if (!llmAnswer || llmAnswer.trim() === "")
+    return noAnswer("llm_empty", reranked[0].rerank_score);
+  if (llmAnswer.trim() === "KHONG_CO_DU_LIEU")
+    return noAnswer("llm_refused", reranked[0].rerank_score);
 
   const uniqueSources = [
     ...new Map(
@@ -695,6 +768,7 @@ async function tryAdvancedRAG(
     model_used: "advanced_rag",
     llm_provider: provider,
     rewritten_question: rewrittenQuestion,
+    rewrite_fallback: rewriteFallback,
     rerank_top_score: reranked[0].rerank_score,
     confidence: reranked[0].rerank_score,
     input_tokens: totalInputTokens,
@@ -768,7 +842,11 @@ async function tryHybridRetrieval(question, provinceId = null) {
 async function tryModularRAG(question, provider = "gemini", provinceId = null) {
   // MỚI: gọi qua runStructuredLookup() thay vì lặp lại logic 3 hàm tra cứu
   // + đã có sẵn bộ lọc isLikelyOutOfScopeTopic() ở trong đó.
-  const structuredResult = await runStructuredLookup(question, provinceId);
+  const structuredResult = await runStructuredLookup(
+    question,
+    provinceId,
+    "modular_rag",
+  );
   if (structuredResult) {
     return {
       ...structuredResult,

@@ -1,0 +1,148 @@
+[
+  {
+    "n": 1,
+    "test_id": "HCM-T1-01",
+    "question": "Xã Phước Vĩnh An, Huyện Củ Chi nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Xã Phước Vĩnh An, Huyện Củ Chi hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9989020824432373,
+    "answer": "Xã Phước Vĩnh An (cũ) nay thuộc Xã Củ Chi, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 2,
+    "test_id": "HCM-T1-02",
+    "question": "Phường 11, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường 11, Quận 3 hiện thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.998054027557373,
+    "answer": "Phường 11, Quận 3 (cũ) hiện thuộc Phường Nhiêu Lộc, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 3,
+    "test_id": "HCM-T1-03",
+    "question": "Phường 5, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường 5, Quận 3, hiện thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9971352815628052,
+    "answer": "Phường 5, Quận 3, TP. Hồ Chí Minh (cũ) nay thuộc Phường Bàn Cờ, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 4,
+    "test_id": "HCM-T1-04",
+    "question": "Phường An Thạnh, Thành phố Thuận An nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường An Thạnh, thuộc Thành phố Thuận An, hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9979756474494934,
+    "answer": "Phường An Thạnh (cũ) hiện nay thuộc Phường Thuận An, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 5,
+    "test_id": "HCM-T1-05",
+    "question": "Phường 12, Quận Bình Thạnh nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường 12 hiện thuộc quận nào?",
+    "rerank_top_score": 0.9919792413711548,
+    "answer": "Phường 12 cũ của Quận Bình Thạnh nay là Phường Bình Thạnh; cũ của Quận Tân Bình nay là Phường Bảy Hiền; cũ của Quận 3 nay là Phường Nhiêu Lộc; cũ của Quận 5 nay là Phường Chợ Lớn; cũ của Quận Gò Vấp nay là Phường An Hội Tây; cũ của Quận 6 nay là Phường Phú Lâm; cũ của Quận 10 nay là Phường Hòa Hưng; và cũ của Thành phố Vũng Tàu nay là Phường Phước Thắng, tất cả đều theo Nghị quyết 1685/NQ-UBTVQH15. Căn cứ pháp lý cho các thay đổi này là chính nghị quyết đó."
+  },
+  {
+    "n": 6,
+    "test_id": "HCM-T1-06",
+    "question": "Phường 3, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường 3, Quận 3 hiện nay thuộc thành phố trực thuộc trung ương nào?",
+    "rerank_top_score": 0.9877362847328186,
+    "answer": "Phường 3, Quận 3, TP. Hồ Chí Minh (cũ) hiện nay thuộc Phường Bàn Cờ, theo 1685/NQ-UBTVQH15, trực thuộc Thành phố Hồ Chí Minh."
+  },
+  {
+    "n": 7,
+    "test_id": "HCM-T1-07",
+    "question": "Phường 14, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường 14, Quận 3, hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9989018440246582,
+    "answer": "Đơn vị cũ: Phường 14, Quận 3, TP. Hồ Chí Minh. Hiện nay thuộc Phường Nhiêu Lộc, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 8,
+    "test_id": "HCM-T1-08",
+    "question": "Phường Phú Hòa, Thành phố Thủ Dầu Một nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "no_answer",
+    "answer": null
+  },
+  {
+    "n": 9,
+    "test_id": "HCM-T1-09",
+    "question": "Xã An Linh, Huyện Phú Giáo nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Xã An Linh, huyện Phú Giáo hiện thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9981995820999146,
+    "answer": "Xã An Linh, huyện Phú Giáo (tỉnh Bình Dương cũ) hiện thuộc Xã An Long, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 10,
+    "test_id": "HCM-T1-10",
+    "question": "Phường 10, Quận Phú Nhuận nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường 10, Quận Phú Nhuận hiện thuộc đơn vị hành chính cấp trên nào?",
+    "rerank_top_score": 0.9976162910461426,
+    "answer": "Phường 10, Quận Phú Nhuận hiện thuộc Phường Phú Nhuận, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 11,
+    "test_id": "HCM-T1-11",
+    "question": "Phường Thạnh Xuân, Quận 12 nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường Thạnh Xuân hiện nay thuộc quận nào?",
+    "rerank_top_score": 0.9977802634239197,
+    "answer": "Phường Thạnh Xuân (cũ) nay thuộc Phường Thới An, Quận 12, theo 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 12,
+    "test_id": "HCM-T1-12",
+    "question": "Thị trấn Đất Đỏ, Huyện Long Đất nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Thị trấn Đất Đỏ, huyện Long Đất hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9989205598831177,
+    "answer": "Thị trấn Đất Đỏ nay thuộc Xã Đất Đỏ, theo Nghị quyết 1685/NQ-UBTVQH15 (đơn vị cũ: Thị trấn Đất Đỏ, đơn vị mới: Xã Đất Đỏ)."
+  },
+  {
+    "n": 13,
+    "test_id": "HCM-T1-13",
+    "question": "Phường 10, Quận Gò Vấp nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường 10, Quận Gò Vấp hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9994701743125916,
+    "answer": "Phường 10, Quận Gò Vấp, TP. Hồ Chí Minh (cũ) hiện nay thuộc Phường Gò Vấp, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 14,
+    "test_id": "HCM-T1-14",
+    "question": "Xã Cây Trường II, Huyện Bàu Bàng nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "no_answer",
+    "answer": null
+  },
+  {
+    "n": 15,
+    "test_id": "HCM-T1-15",
+    "question": "Phường An Tây, Thành phố Bến Cát nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "rewritten_question": "Phường An Tây, thuộc Thành phố Bến Cát, hiện nay thuộc đơn vị hành chính nào?",
+    "rerank_top_score": 0.9998321533203125,
+    "answer": "Phường An Tây, Thành phố Bến Cát (tỉnh Bình Dương cũ) nay thuộc Phường Tây Nam, theo Nghị quyết 1685/NQ-UBTVQH15."
+  }
+]
