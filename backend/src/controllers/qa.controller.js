@@ -145,14 +145,15 @@ async function logQa(
 // để ưu tiên gọi tryNewUnitMatch trước, tránh trường hợp tên đơn vị mới trùng tên
 // 1 đơn vị cũ thành phần (VD "Phường Bến Thành") khiến tryOldUnitMatch trả lời nhầm chiều.
 function isAggregationIntent(question) {
-  const q = question.toLowerCase();
+  const q = NORMALIZE_VN ? stripVN(question) : question.toLowerCase();
+  const has = (kw) => q.includes(NORMALIZE_VN ? stripVN(kw) : kw);
   return (
-    q.includes("được hình thành từ") ||
-    q.includes("hình thành từ") ||
-    q.includes("sáp nhập từ") ||
-    q.includes("được sắp xếp từ") ||
-    q.includes("gồm những đơn vị") ||
-    (q.includes("trước sắp xếp") && q.includes("gồm"))
+    has("được hình thành từ") ||
+    has("hình thành từ") ||
+    has("sáp nhập từ") ||
+    has("được sắp xếp từ") ||
+    has("gồm những đơn vị") ||
+    (has("trước sắp xếp") && has("gồm"))
   );
 }
 
@@ -189,13 +190,43 @@ const OUT_OF_SCOPE_TOPIC_KEYWORDS = [
 ];
 
 function isLikelyOutOfScopeTopic(question) {
-  const q = question.toLowerCase();
-  return OUT_OF_SCOPE_TOPIC_KEYWORDS.some((kw) => q.includes(kw));
+  const q = NORMALIZE_VN ? stripVN(question) : question.toLowerCase();
+  return OUT_OF_SCOPE_TOPIC_KEYWORDS.some((kw) =>
+    q.includes(NORMALIZE_VN ? stripVN(kw) : kw),
+  );
 }
 
 // Gộp logic chạy 3 hàm structured lookup theo đúng thứ tự ưu tiên (dùng
 // chung cho Model 1 và nhánh structured của Model 4 — trước đây 2 nơi
 // lặp lại y hệt đoạn code này, giờ gộp về 1 chỗ để tránh lệch nhau khi sửa).
+// Thí nghiệm M1+/M4+ (việc 5): bật bằng NORMALIZE_VN=true, mặc định tắt.
+const NORMALIZE_VN = process.env.NORMALIZE_VN === "true";
+console.log("NORMALIZE_VN =", NORMALIZE_VN);
+
+function stripVN(s) {
+  return String(s)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
+// "Thị xã Bình Minh" chứa chuỗi "xã Bình Minh". Nếu tên xã chỉ xuất hiện trong cụm "thị xã ..." thì không tính.
+function onlyInsideThiXa(qNorm, oldName) {
+  const n = stripVN(oldName);
+  if (!n.startsWith("xa ")) return false;
+  let from = 0;
+  let found = false;
+  for (;;) {
+    const i = qNorm.indexOf(n, from);
+    if (i === -1) break;
+    found = true;
+    if (qNorm.slice(Math.max(0, i - 4), i) !== "thi ") return false; // có một lần xuất hiện đứng riêng
+    from = i + 1;
+  }
+  return found;
+}
 async function runStructuredLookup(question, provinceId) {
   if (isLikelyOutOfScopeTopic(question)) return null;
 
@@ -210,29 +241,40 @@ async function runStructuredLookup(question, provinceId) {
 }
 
 async function tryOldUnitMatch(question, provinceId = null) {
-  const { rows } = await pool.query(
-    `SELECT o.id AS old_id, o.name AS old_name, o.parent_name, o.province_old,
-            n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
-            m.merge_type, m.article_no, m.clause_no, m.point_no,
-            d.doc_code, d.title AS doc_title, d.source_url, m.notes
-     FROM admin_units_old o
-     JOIN unit_mapping m ON m.old_unit_id = o.id
-     JOIN admin_units_new n ON n.id = m.new_unit_id
-     JOIN provinces_new pn ON pn.id = n.province_new_id
-     LEFT JOIN legal_documents d ON d.id = m.decision_document_id
-     WHERE $1 ILIKE '%' || o.name || '%'
-     ORDER BY length(o.name) DESC`,
-    [question],
-  );
+  const run = (col, param) =>
+    pool.query(
+      `SELECT o.id AS old_id, o.name AS old_name, o.name_norm, o.parent_name, o.province_old,
+              n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
+              m.merge_type, m.article_no, m.clause_no, m.point_no,
+              d.doc_code, d.title AS doc_title, d.source_url, m.notes
+       FROM admin_units_old o
+       JOIN unit_mapping m ON m.old_unit_id = o.id
+       JOIN admin_units_new n ON n.id = m.new_unit_id
+       JOIN provinces_new pn ON pn.id = n.province_new_id
+       LEFT JOIN legal_documents d ON d.id = m.decision_document_id
+       WHERE $1 ILIKE '%' || ${col} || '%'
+       ORDER BY length(o.name) DESC`,
+      [param],
+    );
+
+  let res = await run("o.name", question); // lượt 1: khớp có dấu, như cũ
+  let usedNorm = false;
+  const qNorm = NORMALIZE_VN ? stripVN(question) : null;
+  if (NORMALIZE_VN && res.rows.length === 0) {
+    res = await run("o.name_norm", qNorm); // lượt 2: câu hỏi mất dấu
+    usedNorm = true;
+  }
+  let rows = res.rows;
+  if (NORMALIZE_VN)
+    rows = rows.filter((r) => !onlyInsideThiXa(qNorm, r.old_name));
   if (rows.length === 0) return null;
 
+  // Lượt 2: nhiều tên khác nhau chỉ ở dấu (Tân Quý / Tân Quy) cùng khớp -> giữ cả nhóm để xét mơ hồ,
+  // không được chọn lặng lẽ một tên.
+  const keyOf = (r) => (usedNorm ? r.name_norm : r.old_name);
   const bestOldName = rows[0].old_name;
-  let sameNameRows = rows.filter((r) => r.old_name === bestOldName);
+  let sameNameRows = rows.filter((r) => keyOf(r) === keyOf(rows[0]));
 
-  // ====== MỚI: lọc theo tab tỉnh đang chọn (nếu có) ======
-  // Vì tên đơn vị hành chính trùng nhau rất phổ biến giữa các tỉnh (VD "Phường 16"
-  // tồn tại ở nhiều quận khác nhau), phải thu hẹp về đúng phạm vi tab trước khi
-  // xét tiếp logic mơ hồ theo quận/huyện bên dưới - tránh trộn lẫn dữ liệu khác tỉnh.
   if (provinceId) {
     const inScope = sameNameRows.filter(
       (r) => r.province_new_id === provinceId,
@@ -258,25 +300,24 @@ async function tryOldUnitMatch(question, provinceId = null) {
 
   let distinctOldIds = [...new Set(sameNameRows.map((r) => r.old_id))];
 
-  // Nếu trùng tên nhiều nơi (trong CÙNG tab, hoặc không chọn tab) -> thử lọc thêm theo tên quận/huyện NẾU câu hỏi có nhắc tới
   if (distinctOldIds.length > 1) {
-    const questionLower = question.toLowerCase();
+    const questionLower = NORMALIZE_VN ? qNorm : question.toLowerCase();
     const filteredByParent = sameNameRows.filter(
       (r) =>
-        r.parent_name && questionLower.includes(r.parent_name.toLowerCase()),
+        r.parent_name &&
+        questionLower.includes(
+          NORMALIZE_VN ? stripVN(r.parent_name) : r.parent_name.toLowerCase(),
+        ),
     );
     const filteredDistinctIds = [
       ...new Set(filteredByParent.map((r) => r.old_id)),
     ];
-
-    // Chỉ áp dụng nếu lọc ra được ĐÚNG 1 đơn vị duy nhất - tránh lọc nhầm còn 2+ vẫn mơ hồ
     if (filteredDistinctIds.length === 1) {
       sameNameRows = filteredByParent;
       distinctOldIds = filteredDistinctIds;
     }
   }
 
-  // Sau khi thử lọc, vẫn còn nhiều đơn vị khác nhau trùng tên -> thật sự mơ hồ, hỏi lại
   if (distinctOldIds.length > 1) {
     const options = distinctOldIds.map((id) => {
       const r = sameNameRows.find((x) => x.old_id === id);
@@ -292,7 +333,6 @@ async function tryOldUnitMatch(question, provinceId = null) {
     };
   }
 
-  // Đã xác định được đúng 1 đơn vị (từ đầu hoặc nhờ lọc theo quận) -> trả lời bình thường
   const matched = sameNameRows;
   let answer;
   if (matched.length === 1) {
@@ -300,7 +340,7 @@ async function tryOldUnitMatch(question, provinceId = null) {
     answer = `${r.old_name} (cũ) hiện nay thuộc ${r.new_name}${legalSuffix([r])}.`;
   } else {
     const newNames = matched.map((r) => r.new_name).join(", ");
-    answer = `${bestOldName} (cũ) không nhập trọn vào 1 nơi mà được chia làm ${matched.length} phần: ${newNames}${legalSuffix(matched)}.`;
+    answer = `${matched[0].old_name} (cũ) không nhập trọn vào 1 nơi mà được chia làm ${matched.length} phần: ${newNames}${legalSuffix(matched)}.`;
   }
 
   return {
@@ -314,24 +354,34 @@ async function tryOldUnitMatch(question, provinceId = null) {
 }
 
 async function tryNewUnitMatch(question, provinceId = null) {
-  const { rows } = await pool.query(
-    `SELECT n.name AS new_name, n.province_new_id, pn.name AS new_province_name,
-            o.name AS old_name, o.parent_name, m.merge_type,
-            d.doc_code, d.title AS doc_title, d.source_url, m.notes,
-            m.article_no, m.clause_no, m.point_no
-     FROM admin_units_new n
-     JOIN provinces_new pn ON pn.id = n.province_new_id
-     JOIN unit_mapping m ON m.new_unit_id = n.id
-     JOIN admin_units_old o ON o.id = m.old_unit_id
-     LEFT JOIN legal_documents d ON d.id = m.decision_document_id
-     WHERE $1 ILIKE '%' || n.name || '%'
-     ORDER BY length(n.name) DESC, (o.name LIKE 'Thị trấn%' OR o.name LIKE 'Phường%') DESC, o.name`,
-    [question],
-  );
+  const run = (col, param) =>
+    pool.query(
+      `SELECT n.name AS new_name, n.name_norm, n.province_new_id, pn.name AS new_province_name,
+              o.name AS old_name, o.parent_name, m.merge_type,
+              d.doc_code, d.title AS doc_title, d.source_url, m.notes,
+              m.article_no, m.clause_no, m.point_no
+       FROM admin_units_new n
+       JOIN provinces_new pn ON pn.id = n.province_new_id
+       JOIN unit_mapping m ON m.new_unit_id = n.id
+       JOIN admin_units_old o ON o.id = m.old_unit_id
+       LEFT JOIN legal_documents d ON d.id = m.decision_document_id
+       WHERE $1 ILIKE '%' || ${col} || '%'
+       ORDER BY length(n.name) DESC, (o.name LIKE 'Thị trấn%' OR o.name LIKE 'Phường%') DESC, o.name`,
+      [param],
+    );
+
+  let res = await run("n.name", question);
+  let usedNorm = false;
+  if (NORMALIZE_VN && res.rows.length === 0) {
+    res = await run("n.name_norm", stripVN(question));
+    usedNorm = true;
+  }
+  const rows = res.rows;
   if (rows.length === 0) return null;
 
+  const keyOf = (r) => (usedNorm ? r.name_norm : r.new_name);
   const bestNewName = rows[0].new_name;
-  let matched = rows.filter((r) => r.new_name === bestNewName);
+  let matched = rows.filter((r) => keyOf(r) === keyOf(rows[0]));
 
   // ====== MỚI: lọc theo tab tỉnh, hoặc phát hiện trùng tên đa tỉnh ======
   // Đây là chỗ từng gây lỗi nghiêm trọng: tên đơn vị mới trùng nhau giữa các
@@ -375,7 +425,19 @@ async function tryNewUnitMatch(question, provinceId = null) {
       };
     }
   }
-
+  if (usedNorm) {
+    const distinctNames = [...new Set(matched.map((r) => r.new_name))];
+    if (distinctNames.length > 1) {
+      return {
+        answer: `Có nhiều đơn vị tên gần giống "${bestNewName}" (khác nhau ở dấu): ${distinctNames.join(", ")}. Vui lòng gõ có dấu để tra cứu chính xác.`,
+        answer_type: "structured_lookup",
+        answer_level: "unit",
+        model_used: "rule_based",
+        confidence: 0.6,
+        sources: [],
+      };
+    }
+  }
   const toanBo = matched
     .filter((r) => r.merge_type === "toan_bo")
     .map((r) => `${r.old_name} (${r.parent_name})`);
@@ -602,9 +664,6 @@ async function vectorSearchTopN(question, topN = 10, provinceId = null) {
 }
 
 const RERANK_THRESHOLD = 0.9;
-// Ngưỡng riêng cho chunk tổng hợp chiều mới->cũ (SYNTHETIC-NEW2OLD) — CrossEncoder
-// chấm điểm thấp hệ thống cho loại chunk này do khác văn phong câu hỏi, dù nội
-// dung đúng chủ đề. Đã hiệu chỉnh từ pilot test (điểm quan sát 0.46-0.90).
 const RERANK_THRESHOLD_NEW2OLD = 0.45;
 
 async function tryAdvancedRAG(
