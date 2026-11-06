@@ -1,0 +1,106 @@
+[
+  {
+    "n": 1,
+    "test_id": "HCM-T1-01",
+    "question": "Xã Phước Vĩnh An, Huyện Củ Chi nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "structured_lookup",
+    "answer": "Xã Phước Vĩnh An (cũ) hiện nay thuộc Xã Củ Chi, theo khoản 123 Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 2,
+    "test_id": "HCM-T1-02",
+    "question": "Phường 11, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "structured_lookup",
+    "answer": "Phường 11 (cũ) hiện nay thuộc Phường Nhiêu Lộc, theo khoản 7 Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 3,
+    "test_id": "HCM-T1-03",
+    "question": "Phường 5, Quận 3 nay thuộc đơn vị hành chính nào?",
+    "success": true,
+    "answer_type": "structured_lookup",
+    "answer": "Phường 5 (cũ) hiện nay thuộc Phường Bàn Cờ, theo khoản 5 Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 4,
+    "test_id": "HCM-T7-01",
+    "question": "Phuong Tan Quy, quan Tan Phu nay thuoc nhung don vi nao?",
+    "success": true,
+    "answer_type": "no_answer",
+    "answer": null
+  },
+  {
+    "n": 5,
+    "test_id": "HCM-T7-02",
+    "question": "Phuong Da Kao quan 1 truoc day nay duoc sap xep ra sao?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "answer": "Phường Đa Kao (Quận 1) cũ nay được chia thành Phường Sài Gòn và Phường Tân Định, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 6,
+    "test_id": "HCM-T7-03",
+    "question": "Phuong An Phu thanh pho Thu Duc hien gio thuoc nhung don vi nao?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "answer": "Phường An Phú (Thành phố Thủ Đức) cũ nay được chia thành Phường An Khánh và Phường Bình Trưng, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 7,
+    "test_id": "HCM-T7-04",
+    "question": "Phuong Long Thanh My thanh pho Thu Duc nay duoc chia vao dau?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "answer": "Phường Long Thạnh Mỹ (cũ) nay được chia thành Phường Long Bình và Phường Tăng Nhơn Phú, theo Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 8,
+    "test_id": "HCM-T7-05",
+    "question": "Phuong Tan Dong Hiep thanh pho Di An nay gom nhung don vi nao?",
+    "success": true,
+    "answer_type": "rag_generated",
+    "answer": "Phường Tân Đông Hiệp được hình thành từ toàn bộ phường Tân Bình, một phần phường Thái Hòa và phần còn lại của phường Tân Đông Hiệp cũ, theo khoản 81 Điều 1 Nghị quyết 1685/NQ-UBTVQH15."
+  },
+  {
+    "n": 9,
+    "test_id": "HCM-T8-01",
+    "question": "Phường 1 cũ nay thuộc phường nào?",
+    "success": true,
+    "answer_type": "structured_lookup",
+    "answer": "Có nhiều đơn vị hành chính cùng tên \"Phường 1\" ở các khu vực khác nhau: Phường 1 thuộc Quận 3, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận 4, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận 5, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận 6, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận 10, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận 11, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận Bình Thạnh, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận Phú Nhuận, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận Tân Bình, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Quận Gò Vấp, TP. Hồ Chí Minh (cũ); Phường 1 thuộc Thành phố Vũng Tàu, Tỉnh Bà Rịa - Vũng Tàu (cũ). Vui lòng cho biết cụ thể thuộc quận/huyện nào để tra cứu chính xác."
+  },
+  {
+    "n": 10,
+    "test_id": "HCM-T8-02",
+    "question": "Phường 2 cũ bây giờ là phường nào?",
+    "success": true,
+    "answer_type": "structured_lookup",
+    "answer": "Có nhiều đơn vị hành chính cùng tên \"Phường 2\" ở các khu vực khác nhau: Phường 2 thuộc Quận 3, TP. Hồ Chí Minh (cũ); Phường 2 thuộc Quận 4, TP. Hồ Chí Minh (cũ); Phường 2 thuộc Quận 5, TP. Hồ Chí Minh (cũ); Phường 2 thuộc Quận 6, TP. Hồ Chí Minh (cũ); Phường 2 thuộc Quận 10, TP. Hồ Chí Minh (cũ); Phường 2 thuộc Quận Bình Thạnh, TP. Hồ Chí Minh (cũ); Phường 2 thuộc Quận Phú Nhuận, TP. Hồ Chí Minh (cũ); Phường 2 thuộc Quận Tân Bình, TP. Hồ Chí Minh (cũ); Phường 2 thuộc Thành phố Vũng Tàu, Tỉnh Bà Rịa - Vũng Tàu (cũ). Vui lòng cho biết cụ thể thuộc quận/huyện nào để tra cứu chính xác."
+  },
+  {
+    "n": 11,
+    "test_id": "HCM-T8-03",
+    "question": "Phường 5 hiện nay thuộc đơn vị nào?",
+    "success": true,
+    "answer_type": "structured_lookup",
+    "answer": "Có nhiều đơn vị hành chính cùng tên \"Phường 5\" ở các khu vực khác nhau: Phường 5 thuộc Quận 3, TP. Hồ Chí Minh (cũ); Phường 5 thuộc Quận 5, TP. Hồ Chí Minh (cũ); Phường 5 thuộc Quận 8, TP. Hồ Chí Minh (cũ); Phường 5 thuộc Quận 11, TP. Hồ Chí Minh (cũ); Phường 5 thuộc Quận Bình Thạnh, TP. Hồ Chí Minh (cũ); Phường 5 thuộc Quận Phú Nhuận, TP. Hồ Chí Minh (cũ); Phường 5 thuộc Quận Tân Bình, TP. Hồ Chí Minh (cũ); Phường 5 thuộc Quận Gò Vấp, TP. Hồ Chí Minh (cũ); Phường 5 thuộc Thành phố Vũng Tàu, Tỉnh Bà Rịa - Vũng Tàu (cũ). Vui lòng cho biết cụ thể thuộc quận/huyện nào để tra cứu chính xác."
+  },
+  {
+    "n": 12,
+    "test_id": "HCM-T8-04",
+    "question": "Phường 14 sau sáp nhập gọi là gì?",
+    "success": true,
+    "answer_type": "structured_lookup",
+    "answer": "Có nhiều đơn vị hành chính cùng tên \"Phường 14\" ở các khu vực khác nhau: Phường 14 thuộc Quận 10, TP. Hồ Chí Minh (cũ); Phường 14 thuộc Quận Gò Vấp, TP. Hồ Chí Minh (cũ); Phường 14 thuộc Quận 3, TP. Hồ Chí Minh (cũ); Phường 14 thuộc Quận 11, TP. Hồ Chí Minh (cũ); Phường 14 thuộc Quận 6, TP. Hồ Chí Minh (cũ); Phường 14 thuộc Quận Bình Thạnh, TP. Hồ Chí Minh (cũ); Phường 14 thuộc Quận 8, TP. Hồ Chí Minh (cũ); Phường 14 thuộc Quận 5, TP. Hồ Chí Minh (cũ); Phường 14 thuộc Quận Tân Bình, TP. Hồ Chí Minh (cũ). Vui lòng cho biết cụ thể thuộc quận/huyện nào để tra cứu chính xác."
+  },
+  {
+    "n": 13,
+    "test_id": "HCM-T8-05",
+    "question": "Phường 11 giờ thuộc phường nào?",
+    "success": true,
+    "answer_type": "structured_lookup",
+    "answer": "Có nhiều đơn vị hành chính cùng tên \"Phường 11\" ở các khu vực khác nhau: Phường 11 thuộc Thành phố Vũng Tàu, Tỉnh Bà Rịa - Vũng Tàu (cũ); Phường 11 thuộc Quận Bình Thạnh, TP. Hồ Chí Minh (cũ); Phường 11 thuộc Quận 5, TP. Hồ Chí Minh (cũ); Phường 11 thuộc Quận Phú Nhuận, TP. Hồ Chí Minh (cũ); Phường 11 thuộc Quận 3, TP. Hồ Chí Minh (cũ); Phường 11 thuộc Quận Tân Bình, TP. Hồ Chí Minh (cũ); Phường 11 thuộc Quận 11, TP. Hồ Chí Minh (cũ); Phường 11 thuộc Quận Gò Vấp, TP. Hồ Chí Minh (cũ); Phường 11 thuộc Quận 6, TP. Hồ Chí Minh (cũ). Vui lòng cho biết cụ thể thuộc quận/huyện nào để tra cứu chính xác."
+  }
+]

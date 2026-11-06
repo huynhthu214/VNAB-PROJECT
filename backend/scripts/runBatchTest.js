@@ -8,8 +8,12 @@ const { Pool } = require("pg");
 // ============ CẤU HÌNH — ĐỔI GIỮA CÁC LƯỢT CHẠY ============
 const LLM_PROVIDER = process.env.LLM_PROVIDER_OVERRIDE || "gemini"; // "gemini" | "cohere"
 const ALL_MODELS = ["rule_based", "naive_rag", "advanced_rag", "modular_rag"];
-const MODELS_TO_RUN = process.env.MODELS_TO_RUN
-  ? process.env.MODELS_TO_RUN.split(",")
+// MODELS_OVERRIDE (run_config.ps1) hoặc MODELS_TO_RUN đều được, ví dụ "advanced_rag,modular_rag".
+// Không đặt -> chạy đủ 4 model.
+const modelsEnv = process.env.MODELS_OVERRIDE || process.env.MODELS_TO_RUN;
+const MODELS_TO_RUN = modelsEnv
+  ? modelsEnv
+      .split(",")
       .map((s) => s.trim())
       .filter((m) => ALL_MODELS.includes(m))
   : ALL_MODELS;
@@ -87,10 +91,15 @@ const QUESTION_END = process.env.QUESTION_END
   : null;
 
 const API_BASE_URL = "http://localhost:3000/api/v1";
+// RESULTS_ROOT (đường dẫn tuyệt đối) có ưu tiên cao nhất.
+// Nếu không, RESULTS_TAG="m3_safe" -> ghi vào ../data/batch_results/m3_safe (không đè official_batch).
 const RESULTS_ROOT = process.env.RESULTS_ROOT
   ? path.resolve(process.env.RESULTS_ROOT)
-  : path.join(__dirname, "../data/batch_results/official_batch");
-
+  : path.join(
+      __dirname,
+      "../data/batch_results",
+      process.env.RESULTS_TAG || "official_batch",
+    );
 const RESULTS_DIR = path.join(RESULTS_ROOT, PROVINCE_CODE); // kết quả tách theo tỉnh
 const SUMMARY_PATH = path.join(RESULTS_ROOT, "timing_summary.xlsx"); // 1 file tổng hợp chung mọi tỉnh
 
@@ -365,11 +374,17 @@ function evaluateAnswer(q, result) {
 
   // ===== Ambiguous =====
   if (q.category === "T8_ambiguous") {
-    const asksForContext =
-      answer.includes("quận") ||
-      answer.includes("huyện") ||
-      answer.includes("bổ sung") ||
-      answer.includes("chưa đủ thông tin");
+    // Chỉ tính là PASS khi câu trả lời THỰC SỰ yêu cầu làm rõ. Không dùng riêng
+    // "quận"/"huyện" vì câu trả lời đã chốt một đơn vị cũng nhắc tên quận/huyện.
+    const CLARIFY_PHRASES = [
+      "nhiều đơn vị",
+      "cho biết cụ thể",
+      "vui lòng cho biết",
+      "làm rõ",
+      "bổ sung thông tin",
+      "chưa đủ thông tin",
+    ];
+    const asksForContext = CLARIFY_PHRASES.some((p) => answer.includes(p));
 
     return {
       pass: asksForContext,
