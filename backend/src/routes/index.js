@@ -7,6 +7,7 @@ const adminUnitsController = require("../controllers/adminUnits.controller");
 const qaController = require("../controllers/qa.controller");
 const documentsController = require("../controllers/documents.controller");
 const feedbackController = require("../controllers/feedback.controller");
+const directoryController = require("../controllers/directory.controller");
 
 router.get("/health", healthController.check);
 
@@ -23,5 +24,7 @@ router.post("/qa/ask", qaController.ask);
 
 router.get("/documents/:id", documentsController.getById);
 router.post("/feedback", feedbackController.create);
+router.get("/units", directoryController.listUnits);
+router.get("/legal-documents", directoryController.listLegalDocuments);
 
 module.exports = router;
