@@ -28,16 +28,31 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
    ========================================================= */
 const LOOKUP_API = import.meta.env.VITE_LOOKUP_API === "true";
 
+// DB lưu loại đơn vị dạng mã (phuong, xa, thi_tran...) -> nhãn hiển thị
+const KIND = {
+  phuong: "Phường",
+  xa: "Xã",
+  thi_tran: "Thị trấn",
+  dac_khu: "Đặc khu",
+  huyen: "Huyện",
+};
+function kindLabel(type, name) {
+  return (
+    KIND[String(type || "").toLowerCase()] ||
+    (/^[A-ZÀ-Ỹ]/.test(type || "") ? type : unitKind(name))
+  );
+}
+
 function normalizeApiUnit(u, provinceCode, i) {
   const newName = u.new_unit_name || u.new_name || "";
   return {
     id: `${provinceCode}_${i}`,
     province: provinceCode,
     newName,
-    newType: u.new_unit_type || unitKind(newName),
+    newType: kindLabel(u.new_unit_type, newName),
     oldUnits: (u.old_units || []).map((o) => ({
       name: o.name || o.old_unit_name || "",
-      type: o.type || unitKind(o.name || ""),
+      type: kindLabel(o.type, o.name),
       parent: o.parent_name || o.old_parent || "",
       merge: o.merge_type === "mot_phan" ? "mot_phan" : "toan_bo",
     })),

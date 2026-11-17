@@ -313,9 +313,10 @@ export function mockToUnits() {
       parent: u.old_parent,
       merge: u.merge_type || "toan_bo",
     })),
-    hq: u.headquarters_address && !/minh họa/i.test(u.headquarters_address)
-      ? u.headquarters_address
-      : "",
+    hq:
+      u.headquarters_address && !/minh họa/i.test(u.headquarters_address)
+        ? u.headquarters_address
+        : "",
     decisionNumber: /minh họa/i.test(u.decision_number)
       ? ""
       : u.decision_number,
@@ -335,9 +336,80 @@ export const FALLBACK_DOCS = [
   },
   {
     code: "1685/NQ-UBTVQH15",
-    title: "Nghị quyết về việc sắp xếp đơn vị hành chính cấp xã của TP. Hồ Chí Minh năm 2025",
+    title:
+      "Nghị quyết về việc sắp xếp đơn vị hành chính cấp xã của TP. Hồ Chí Minh năm 2025",
     date: "2025-06-16",
     url: "",
     scope: "TP. Hồ Chí Minh",
   },
 ];
+
+/* Câu hỏi gợi ý ở tab Hỏi đáp: lấy từ chính dữ liệu của tỉnh đang chọn
+   (đơn vị cấp xã, huyện cũ) thay vì hỏi chung về tên tỉnh. */
+const SUGGEST_TYPES = ["Xã", "Phường", "Thị trấn", "Huyện", "Quận", "Đặc khu"];
+
+function withKind(name, type) {
+  const n = String(name || "").trim();
+  if (!n) return "";
+  if (!type || fold(n).startsWith(fold(type))) return n;
+  return `${type} ${n}`;
+}
+
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+export function buildSuggestions(units, provinceCode, seed = 0) {
+  const list = (units || []).filter((u) => u.province === provinceCode);
+  if (!list.length) return [];
+  // xáo trộn ổn định theo seed: mỗi cuộc trò chuyện mới thấy gợi ý khác
+  const rank = (u) => hashStr(`${seed}|${u.newName}`);
+  const sorted = [...list].sort((a, b) => rank(a) - rank(b));
+
+  const out = [];
+  const used = new Set();
+  const add = (q) => {
+    if (!q || used.has(q) || out.length >= 3) return;
+    used.add(q);
+    out.push(q);
+  };
+
+  // 1) một đơn vị cũ sáp nhập toàn bộ: hỏi xuôi
+  for (const u of sorted) {
+    const o = u.oldUnits.find(
+      (x) => x.merge === "toan_bo" && SUGGEST_TYPES.includes(x.type),
+    );
+    if (o) {
+      add(`${withKind(o.name, o.type)} cũ nay thuộc đơn vị nào?`);
+      break;
+    }
+  }
+  // 2) một đơn vị mới gộp từ nhiều đơn vị cũ: hỏi ngược
+  for (const u of sorted) {
+    if (u.oldUnits.length >= 3 && SUGGEST_TYPES.includes(u.newType)) {
+      add(
+        `${withKind(u.newName, u.newType)} được sáp nhập từ những đơn vị nào?`,
+      );
+      break;
+    }
+  }
+  // 3) đơn vị cũ chỉ nhận một phần: hỏi để thấy bị chia ra
+  for (const u of sorted) {
+    const o = u.oldUnits.find(
+      (x) => x.merge === "mot_phan" && SUGGEST_TYPES.includes(x.type),
+    );
+    if (o) {
+      add(`${withKind(o.name, o.type)} cũ nay được chia vào những đơn vị nào?`);
+      break;
+    }
+  }
+  // bổ sung cho đủ 3 câu nếu thiếu dạng nào đó
+  for (const u of sorted) {
+    if (out.length >= 3) break;
+    const o = u.oldUnits.find((x) => SUGGEST_TYPES.includes(x.type));
+    if (o) add(`${withKind(o.name, o.type)} cũ nay thuộc đơn vị nào?`);
+  }
+  return out;
+}

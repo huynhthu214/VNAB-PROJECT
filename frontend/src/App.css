@@ -2827,3 +2827,41 @@ a.source-chip.link:hover {
     opacity: 1;
   }
 }
+
+
+/* =========================================================
+   Các tab ngoài Hỏi đáp: cuộn theo cả trang (không cuộn trong khung riêng),
+   để trình duyệt chụp toàn trang / in được. Hỏi đáp vẫn giữ khung cố định.
+   ========================================================= */
+html:has(.app.doc-scroll),
+html:has(.app.doc-scroll) body,
+html:has(.app.doc-scroll) #root {
+  height: auto;
+}
+.app.doc-scroll {
+  height: auto;
+  min-height: 100dvh;
+}
+.app.doc-scroll .topbar {
+  position: sticky;
+  top: 0;
+}
+.app.doc-scroll .stage {
+  flex: 1 0 auto;
+}
+.app.doc-scroll .page-scroll {
+  height: auto;
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+.app.doc-scroll .ex-side {
+  top: calc(var(--topbar-h) + 16px);
+}
+html {
+  scroll-behavior: smooth;
+}
+@media print {
+  .app.doc-scroll .topbar {
+    position: static;
+  }
+}

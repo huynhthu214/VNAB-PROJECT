@@ -25,13 +25,25 @@ function SouthMap({ activeCode, selectedCode, onHover, onActivate }) {
       aria-label="Bản đồ 8 tỉnh, thành phố miền Nam sau sáp nhập"
     >
       <path className="map-ctx" d={MAP.context} />
-      <text className="map-sea" x={MAP.places.bienDong[0]} y={MAP.places.bienDong[1]}>
+      <text
+        className="map-sea"
+        x={MAP.places.bienDong[0]}
+        y={MAP.places.bienDong[1]}
+      >
         Biển Đông
       </text>
-      <text className="map-sea" x={MAP.places.vinhThaiLan[0] + 14} y={MAP.places.vinhThaiLan[1]}>
+      <text
+        className="map-sea"
+        x={MAP.places.vinhThaiLan[0] + 14}
+        y={MAP.places.vinhThaiLan[1]}
+      >
         Vịnh Thái Lan
       </text>
-      <text className="map-land" x={MAP.places.campuchia[0] + 10} y={MAP.places.campuchia[1]}>
+      <text
+        className="map-land"
+        x={MAP.places.campuchia[0] + 10}
+        y={MAP.places.campuchia[1]}
+      >
         Campuchia
       </text>
 
@@ -107,9 +119,7 @@ function MapPanel({ code, stats, onHover, onActivate, actions }) {
             <span className="lineage-arrow" aria-hidden="true">
               <Icon name="arrow" size={20} />
             </span>
-            <span className="chip-new">
-              {p.name}
-            </span>
+            <span className="chip-new">{p.name}</span>
           </div>
           <dl className="mp-nums">
             <div>
@@ -122,7 +132,10 @@ function MapPanel({ code, stats, onHover, onActivate, actions }) {
             </div>
           </dl>
           <div className="mp-actions">
-            <button className="btn primary" onClick={() => actions.lookup(p.code)}>
+            <button
+              className="btn primary"
+              onClick={() => actions.lookup(p.code)}
+            >
               <Icon name="search" size={16} />
               Tra cứu
             </button>
@@ -131,7 +144,7 @@ function MapPanel({ code, stats, onHover, onActivate, actions }) {
               Khám phá
             </button>
             <button className="btn" onClick={() => actions.chat(p.code)}>
-              <Icon name="chat" size={16} />
+              <Icon name="ask" size={16} />
               Hỏi đáp
             </button>
           </div>
@@ -139,7 +152,10 @@ function MapPanel({ code, stats, onHover, onActivate, actions }) {
       ) : (
         <div className="mp-intro">
           <h3>8 tỉnh, thành phố</h3>
-          <p>Di chuột (hoặc chạm) vào bản đồ để xem tỉnh mới hợp nhất từ những tỉnh nào.</p>
+          <p>
+            Di chuột (hoặc chạm) vào bản đồ để xem tỉnh mới hợp nhất từ những
+            tỉnh nào.
+          </p>
           <ul className="mp-rows">
             {PROVINCES.map((q) => (
               <li key={q.code}>
@@ -154,7 +170,9 @@ function MapPanel({ code, stats, onHover, onActivate, actions }) {
                   <span className="swatch" />
                   <strong>{q.short}</strong>
                   <span className="mp-rows-from">
-                    {oldProvinceList(q).filter((x) => x !== q.short && x !== q.name).join(", ")}
+                    {oldProvinceList(q)
+                      .filter((x) => x !== q.short && x !== q.name)
+                      .join(", ")}
                   </span>
                 </button>
               </li>
@@ -188,10 +206,30 @@ function MapPanel({ code, stats, onHover, onActivate, actions }) {
 }
 
 const STAT_DEFS = [
-  { key: "provinces", icon: "map", label: "Tỉnh, thành phố", sub: (s) => `hợp nhất từ ${s.oldProvinces} tỉnh, thành cũ` },
-  { key: "oldUnits", icon: "building", label: "Đơn vị cấp xã cũ", sub: () => "trước sắp xếp" },
-  { key: "newUnits", icon: "merge", label: "Đơn vị cấp xã mới", sub: () => "phường, xã, đặc khu" },
-  { key: "docs", icon: "file", label: "Văn bản căn cứ", sub: () => "nghị quyết được dẫn nguồn" },
+  {
+    key: "provinces",
+    icon: "map",
+    label: "Tỉnh, thành phố",
+    sub: (s) => `hợp nhất từ ${s.oldProvinces} tỉnh, thành cũ`,
+  },
+  {
+    key: "oldUnits",
+    icon: "building",
+    label: "Đơn vị cấp xã cũ",
+    sub: () => "trước sắp xếp",
+  },
+  {
+    key: "newUnits",
+    icon: "merge",
+    label: "Đơn vị cấp xã mới",
+    sub: () => "phường, xã, đặc khu",
+  },
+  {
+    key: "docs",
+    icon: "file",
+    label: "Văn bản căn cứ",
+    sub: () => "nghị quyết được dẫn nguồn",
+  },
 ];
 
 export default function OverviewTab({ stats, loading, actions, onHeroSearch }) {
@@ -208,7 +246,11 @@ export default function OverviewTab({ stats, loading, actions, onHeroSearch }) {
   return (
     <div className="page ov">
       <section className="ov-hero">
-        <svg className="hero-art" viewBox={`0 0 ${MAP.viewBox[0]} ${MAP.viewBox[1]}`} aria-hidden="true">
+        <svg
+          className="hero-art"
+          viewBox={`0 0 ${MAP.viewBox[0]} ${MAP.viewBox[1]}`}
+          aria-hidden="true"
+        >
           {PROVINCES.map((p) => (
             <path key={p.code} d={MAP.provinces[p.code].d} />
           ))}
@@ -288,7 +330,9 @@ export default function OverviewTab({ stats, loading, actions, onHeroSearch }) {
               <Icon name="search" size={22} />
             </span>
             <h3>Tra cứu nhanh</h3>
-            <p>Gõ tên phường, xã cũ hoặc mới để xem sơ đồ chuyển đổi tức thì.</p>
+            <p>
+              Gõ tên phường, xã cũ hoặc mới để xem sơ đồ chuyển đổi tức thì.
+            </p>
             <span className="feat-go">
               Mở tra cứu <Icon name="arrow" size={16} />
             </span>
@@ -298,17 +342,22 @@ export default function OverviewTab({ stats, loading, actions, onHeroSearch }) {
               <Icon name="layers" size={22} />
             </span>
             <h3>Khám phá theo tỉnh</h3>
-            <p>Duyệt toàn bộ đơn vị mới của một tỉnh và xem được hình thành từ đâu.</p>
+            <p>
+              Duyệt toàn bộ đơn vị mới của một tỉnh và xem được hình thành từ
+              đâu.
+            </p>
             <span className="feat-go">
               Mở khám phá <Icon name="arrow" size={16} />
             </span>
           </button>
           <button className="feat-card" onClick={actions.goChat}>
             <span className="feat-icon">
-              <Icon name="chat" size={22} />
+              <Icon name="ask" size={22} />
             </span>
             <h3>Hỏi đáp</h3>
-            <p>Đặt câu hỏi bằng ngôn ngữ tự nhiên, nhận câu trả lời kèm nguồn.</p>
+            <p>
+              Đặt câu hỏi bằng ngôn ngữ tự nhiên, nhận câu trả lời kèm nguồn.
+            </p>
             <span className="feat-go">
               Bắt đầu hỏi <Icon name="arrow" size={16} />
             </span>

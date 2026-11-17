@@ -5,6 +5,7 @@ import {
   GENERIC_LEGAL_BASIS,
   provinceByCode,
   oldProvinceList,
+  buildSuggestions,
 } from "../data.js";
 import { STORE_KEY, loadUi, saveUi } from "../storage.js";
 import { Icon, SealMark, ProvinceChips } from "./shared.jsx";
@@ -179,6 +180,7 @@ export default function ChatTab({
   province: selectedProvince,
   onProvince,
   prefill,
+  units,
 }) {
   // đọc lịch sử và trạng thái giao diện đã lưu (một lần khi mở trang)
   const [initial] = useState(() => {
@@ -357,6 +359,13 @@ export default function ChatTab({
   }
 
   function suggestions() {
+    // ưu tiên câu hỏi dựng từ dữ liệu thật của tỉnh (xã, phường, huyện cũ)
+    const fromData = buildSuggestions(
+      units,
+      selectedProvince,
+      conversations.length,
+    );
+    if (fromData.length) return fromData;
     if (isLive) {
       if (currentProvince.samples) return currentProvince.samples;
       return currentProvince.merged
@@ -535,7 +544,10 @@ export default function ChatTab({
 
   // ---------- render ----------
   const showHero = messages.length === 0 && !isTyping;
-  const lastUserIdx = messages.reduce((a, m, i) => (m.role === "user" ? i : a), -1);
+  const lastUserIdx = messages.reduce(
+    (a, m, i) => (m.role === "user" ? i : a),
+    -1,
+  );
   const oldProvinces = oldProvinceList(currentProvince);
   const statusKind = !isLive
     ? "idle"
@@ -631,10 +643,18 @@ export default function ChatTab({
               <span className="opts-label">Tùy chọn</span>
             </button>
             {optsOpen && (
-              <div className="opts-pop" role="dialog" aria-label="Tùy chọn trả lời">
+              <div
+                className="opts-pop"
+                role="dialog"
+                aria-label="Tùy chọn trả lời"
+              >
                 <div className="opts-row">
                   <span className="opts-cap">Mô hình trả lời</span>
-                  <div className="seg col" role="radiogroup" aria-label="Mô hình trả lời">
+                  <div
+                    className="seg col"
+                    role="radiogroup"
+                    aria-label="Mô hình trả lời"
+                  >
                     {MODEL_OPTIONS.map((mo) => (
                       <button
                         key={mo.value}
@@ -735,7 +755,10 @@ export default function ChatTab({
                           aria-label="Sao chép câu hỏi"
                           title={copiedIndex === i ? "Đã sao chép" : "Sao chép"}
                         >
-                          <Icon name={copiedIndex === i ? "check" : "copy"} size={15} />
+                          <Icon
+                            name={copiedIndex === i ? "check" : "copy"}
+                            size={15}
+                          />
                         </button>
                         {i === lastUserIdx && !busy && (
                           <button
@@ -767,14 +790,16 @@ export default function ChatTab({
                         </div>
                       )}
 
-                      {m.kind === "no-answer" && i === messages.length - 1 && !busy && (
-                        <div className="msg-actions inline retry">
-                          <button className="act text" onClick={regenerate}>
-                            <Icon name="refresh" size={15} />
-                            Thử lại
-                          </button>
-                        </div>
-                      )}
+                      {m.kind === "no-answer" &&
+                        i === messages.length - 1 &&
+                        !busy && (
+                          <div className="msg-actions inline retry">
+                            <button className="act text" onClick={regenerate}>
+                              <Icon name="refresh" size={15} />
+                              Thử lại
+                            </button>
+                          </div>
+                        )}
 
                       {m.kind === "answer" && (
                         <>
@@ -818,9 +843,14 @@ export default function ChatTab({
                                 className="act"
                                 onClick={() => copyAnswer(i)}
                                 aria-label="Sao chép câu trả lời"
-                                title={copiedIndex === i ? "Đã sao chép" : "Sao chép"}
+                                title={
+                                  copiedIndex === i ? "Đã sao chép" : "Sao chép"
+                                }
                               >
-                                <Icon name={copiedIndex === i ? "check" : "copy"} size={15} />
+                                <Icon
+                                  name={copiedIndex === i ? "check" : "copy"}
+                                  size={15}
+                                />
                               </button>
                               {i === messages.length - 1 && !busy && (
                                 <button

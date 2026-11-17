@@ -16,7 +16,7 @@ import AboutTab from "./components/AboutTab.jsx";
    ========================================================= */
 const TABS = [
   { id: "overview", slug: "tong-quan", label: "Tổng quan", icon: "map" },
-  { id: "chat", slug: "hoi-dap", label: "Hỏi đáp", icon: "chat" },
+  { id: "chat", slug: "hoi-dap", label: "Hỏi đáp", icon: "ask" },
   { id: "lookup", slug: "tra-cuu", label: "Tra cứu", icon: "search" },
   { id: "explore", slug: "kham-pha", label: "Khám phá", icon: "layers" },
   { id: "about", slug: "gioi-thieu", label: "Giới thiệu", icon: "book" },
@@ -133,12 +133,16 @@ export default function App() {
     go("chat");
   }
 
+  useEffect(() => {
+    if (tab !== "chat") window.scrollTo(0, 0);
+  }, [tab]);
+
   function pickProvince(code) {
     setProvince(code);
   }
 
   return (
-    <div className="app">
+    <div className={`app ${tab === "chat" ? "" : "doc-scroll"}`}>
       <header className="topbar">
         <div className="topbar-in">
           <a
@@ -185,6 +189,7 @@ export default function App() {
           province={province}
           onProvince={pickProvince}
           prefill={prefill}
+          units={dir.units}
         />
 
         {tab !== "chat" && (

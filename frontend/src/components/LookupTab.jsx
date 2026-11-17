@@ -1,11 +1,6 @@
 import { useDeferredValue, useMemo, useRef } from "react";
 import { PROVINCES, provinceByCode, fold, formatDate } from "../data.js";
-import {
-  Icon,
-  LineageFlow,
-  LegalLink,
-  SampleNotice,
-} from "./shared.jsx";
+import { Icon, LineageFlow, LegalLink, SampleNotice } from "./shared.jsx";
 
 const STOP = new Set(["cu", "moi"]);
 const MAX_RESULTS = 40;
@@ -21,7 +16,9 @@ function allMatch(field, toks) {
 
 /* Tìm theo tên đơn vị cũ, đơn vị mới hoặc quận/huyện cũ — không phân biệt dấu */
 export function searchUnits(units, query, scope) {
-  const q = fold(query).replace(/[?.,;:!]/g, " ").trim();
+  const q = fold(query)
+    .replace(/[?.,;:!]/g, " ")
+    .trim();
   const toks = q.split(/\s+/).filter((t) => t && !STOP.has(t));
   if (!toks.length) return [];
   const joined = toks.join(" ");
@@ -35,13 +32,19 @@ export function searchUnits(units, query, scope) {
     const fn = fold(u.newName);
     if (allMatch(fn, toks)) {
       newHit = true;
-      score = Math.max(score, fn === joined ? 100 : fn.startsWith(joined) ? 80 : 60);
+      score = Math.max(
+        score,
+        fn === joined ? 100 : fn.startsWith(joined) ? 80 : 60,
+      );
     }
     u.oldUnits.forEach((o, i) => {
       const f = fold(o.name);
       if (allMatch(f, toks)) {
         hits.add(i);
-        score = Math.max(score, f === joined ? 100 : f.startsWith(joined) ? 80 : 60);
+        score = Math.max(
+          score,
+          f === joined ? 100 : f.startsWith(joined) ? 80 : 60,
+        );
       } else if (allMatch(`${f} ${fold(o.parent)}`, toks)) {
         hits.add(i);
         score = Math.max(score, 40);
@@ -140,7 +143,9 @@ export default function LookupTab({
 
   const sampleNames = useMemo(() => {
     const codes = new Set(
-      units.filter((u) => u.sample && (!scope || u.province === scope)).map((u) => u.province),
+      units
+        .filter((u) => u.sample && (!scope || u.province === scope))
+        .map((u) => u.province),
     );
     return PROVINCES.filter((p) => codes.has(p.code)).map((p) => p.name);
   }, [units, scope]);
@@ -228,8 +233,8 @@ export default function LookupTab({
             </div>
             <h2>Không tìm thấy “{query.trim()}”</h2>
             <p>
-              Thử bỏ bớt từ khóa, kiểm tra chính tả, hoặc chọn phạm vi “Tất
-              cả”. Bạn cũng có thể đặt câu hỏi cho trợ lý.
+              Thử bỏ bớt từ khóa, kiểm tra chính tả, hoặc chọn phạm vi “Tất cả”.
+              Bạn cũng có thể đặt câu hỏi cho trợ lý.
             </p>
             <div className="empty-actions">
               {!all && (
@@ -241,7 +246,7 @@ export default function LookupTab({
                 className="btn primary"
                 onClick={() => onAsk(province, query.trim())}
               >
-                <Icon name="chat" size={16} />
+                <Icon name="ask" size={16} />
                 Hỏi trợ lý
               </button>
             </div>
