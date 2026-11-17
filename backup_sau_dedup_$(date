@@ -1,2 +1,0 @@
-pg_dump: error: too many command-line arguments (first is "+%Y%m%d_%H%M).dump")
-pg_dump: hint: Try "pg_dump --help" for more information.

@@ -683,7 +683,18 @@ async function vectorSearchTopN(question, topN = 10, provinceId = null) {
 
 const RERANK_THRESHOLD = 0.9;
 const RERANK_THRESHOLD_NEW2OLD = 0.45;
-
+console.log("[cfg]", {
+  RERANK_THRESHOLD,
+  RERANK_THRESHOLD_NEW2OLD,
+  NORMALIZE_VN,
+  LOOKUP_NORMALIZE: process.env.LOOKUP_NORMALIZE,
+  M3_REWRITE: process.env.M3_REWRITE,
+  M3_RERANK: process.env.M3_RERANK,
+  M3_CONTEXT_K: process.env.M3_CONTEXT_K,
+  M3_SYNTH_ALL: process.env.M3_SYNTH_ALL,
+  M3_LLM_QUESTION: process.env.M3_LLM_QUESTION,
+  M3_SAFE_REWRITE: process.env.M3_SAFE_REWRITE,
+});
 // Giữ nguyên RERANK_THRESHOLD / RERANK_THRESHOLD_NEW2OLD đã có ở file. Thêm các dòng require/hàm phụ ở đầu file:
 //   const fs = require("fs");
 //   const { safeRewrite } = require("./safeRewrite");   // đặt safeRewrite.js cùng thư mục (hoặc sửa đường dẫn)
