@@ -39,7 +39,20 @@ function PageFooter({ go }) {
           Thông tin mang tính tra cứu, tham khảo. Hãy đối chiếu văn bản gốc khi
           dùng cho thủ tục hành chính hoặc pháp lý.
         </p>
-        <button className="link-btn" onClick={() => go("about")}>
+        <button
+          className="link-btn"
+          onClick={() => {
+            go("about");
+            // sau khi trang Giới thiệu hiện ra thì cuộn tới danh sách văn bản
+            setTimeout(
+              () =>
+                document
+                  .getElementById("van-ban")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+              120,
+            );
+          }}
+        >
           Xem văn bản căn cứ <Icon name="arrow" size={15} />
         </button>
       </div>
@@ -190,6 +203,7 @@ export default function App() {
           onProvince={pickProvince}
           prefill={prefill}
           units={dir.units}
+          basis={dir.basis}
         />
 
         {tab !== "chat" && (
@@ -200,6 +214,8 @@ export default function App() {
                 loading={dir.loading}
                 actions={actions}
                 onHeroSearch={heroSearch}
+                failed={dir.failed}
+                onRetry={dir.reload}
               />
             )}
             {tab === "lookup" && (
@@ -212,6 +228,8 @@ export default function App() {
                 query={lookupQuery}
                 onQuery={setLookupQuery}
                 onAsk={ask}
+                failed={dir.failed}
+                onRetry={dir.reload}
               />
             )}
             {tab === "explore" && (
@@ -221,6 +239,8 @@ export default function App() {
                 province={province}
                 onProvince={pickProvince}
                 onAsk={ask}
+                failed={dir.failed}
+                onRetry={dir.reload}
               />
             )}
             {tab === "about" && (

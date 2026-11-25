@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { MAP } from "../mapData.js";
 import { PROVINCES, provinceByCode, oldProvinceList } from "../data.js";
-import { Icon, CountUp } from "./shared.jsx";
+import { Icon, CountUp, LoadNotice } from "./shared.jsx";
 
 const canHover = () =>
   typeof window !== "undefined" &&
@@ -232,7 +232,14 @@ const STAT_DEFS = [
   },
 ];
 
-export default function OverviewTab({ stats, loading, actions, onHeroSearch }) {
+export default function OverviewTab({
+  stats,
+  loading,
+  actions,
+  onHeroSearch,
+  failed = [],
+  onRetry,
+}) {
   const [hover, setHover] = useState(null);
   const [selected, setSelected] = useState(null);
   const [q, setQ] = useState("");
@@ -289,6 +296,14 @@ export default function OverviewTab({ stats, loading, actions, onHeroSearch }) {
       </section>
 
       <div className="wrap ov-body">
+        {!loading && (
+          <LoadNotice
+            names={PROVINCES.filter((p) => failed.includes(p.code)).map(
+              (p) => p.name,
+            )}
+            onRetry={onRetry}
+          />
+        )}
         <section className="stats" aria-label="Số liệu tổng quan">
           {STAT_DEFS.map((d) => (
             <div className="stat" key={d.key}>

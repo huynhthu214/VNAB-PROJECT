@@ -1,6 +1,12 @@
 import { useDeferredValue, useMemo, useRef } from "react";
 import { PROVINCES, provinceByCode, fold, formatDate } from "../data.js";
-import { Icon, LineageFlow, LegalLink, SampleNotice } from "./shared.jsx";
+import {
+  Icon,
+  LineageFlow,
+  LegalLink,
+  SampleNotice,
+  LoadNotice,
+} from "./shared.jsx";
 
 const STOP = new Set(["cu", "moi"]);
 const MAX_RESULTS = 40;
@@ -114,6 +120,8 @@ export default function LookupTab({
   query,
   onQuery,
   onAsk,
+  failed = [],
+  onRetry,
 }) {
   const inputRef = useRef(null);
   const deferred = useDeferredValue(query);
@@ -149,6 +157,14 @@ export default function LookupTab({
     );
     return PROVINCES.filter((p) => codes.has(p.code)).map((p) => p.name);
   }, [units, scope]);
+
+  const failedNames = useMemo(
+    () =>
+      PROVINCES.filter(
+        (p) => failed.includes(p.code) && (!scope || p.code === scope),
+      ).map((p) => p.name),
+    [failed, scope],
+  );
 
   return (
     <div className="page lk">
@@ -205,6 +221,7 @@ export default function LookupTab({
         </div>
 
         <SampleNotice names={sampleNames} />
+        <LoadNotice names={failedNames} onRetry={onRetry} />
 
         {loading ? (
           <div className="skeleton-list" aria-hidden="true">

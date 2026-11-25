@@ -368,6 +368,21 @@ export function buildSuggestions(units, provinceCode, seed = 0) {
   const rank = (u) => hashStr(`${seed}|${u.newName}`);
   const sorted = [...list].sort((a, b) => rank(a) - rank(b));
 
+  // chỉ gợi ý đơn vị cũ có tên duy nhất trong tỉnh: tên như "Phường 1" trùng ở
+  // nhiều huyện cũ nên câu hỏi sẽ mơ hồ, hệ thống phải hỏi lại thay vì trả lời.
+  // (đơn vị cũ bị chia xuất hiện nhiều lần nhưng vẫn là một đơn vị: đếm theo khóa)
+  const nameKeys = new Map();
+  for (const u of list)
+    for (const o of u.oldUnits) {
+      const k = fold(o.name);
+      if (!nameKeys.has(k)) nameKeys.set(k, new Set());
+      nameKeys.get(k).add(o.key || `${k}|${fold(o.parent)}`);
+    }
+  const askable = (o) =>
+    SUGGEST_TYPES.includes(o.type) &&
+    nameKeys.get(fold(o.name)).size === 1 &&
+    !/(^|\s)\d+$/.test(o.name.trim());
+
   const out = [];
   const used = new Set();
   const add = (q) => {
@@ -378,9 +393,7 @@ export function buildSuggestions(units, provinceCode, seed = 0) {
 
   // 1) một đơn vị cũ sáp nhập toàn bộ: hỏi xuôi
   for (const u of sorted) {
-    const o = u.oldUnits.find(
-      (x) => x.merge === "toan_bo" && SUGGEST_TYPES.includes(x.type),
-    );
+    const o = u.oldUnits.find((x) => x.merge === "toan_bo" && askable(x));
     if (o) {
       add(`${withKind(o.name, o.type)} cũ nay thuộc đơn vị nào?`);
       break;
@@ -397,9 +410,7 @@ export function buildSuggestions(units, provinceCode, seed = 0) {
   }
   // 3) đơn vị cũ chỉ nhận một phần: hỏi để thấy bị chia ra
   for (const u of sorted) {
-    const o = u.oldUnits.find(
-      (x) => x.merge === "mot_phan" && SUGGEST_TYPES.includes(x.type),
-    );
+    const o = u.oldUnits.find((x) => x.merge === "mot_phan" && askable(x));
     if (o) {
       add(`${withKind(o.name, o.type)} cũ nay được chia vào những đơn vị nào?`);
       break;
@@ -408,7 +419,7 @@ export function buildSuggestions(units, provinceCode, seed = 0) {
   // bổ sung cho đủ 3 câu nếu thiếu dạng nào đó
   for (const u of sorted) {
     if (out.length >= 3) break;
-    const o = u.oldUnits.find((x) => SUGGEST_TYPES.includes(x.type));
+    const o = u.oldUnits.find(askable);
     if (o) add(`${withKind(o.name, o.type)} cũ nay thuộc đơn vị nào?`);
   }
   return out;

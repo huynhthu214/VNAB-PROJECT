@@ -39,9 +39,11 @@ function buildUnits(rows) {
       u.source_url = r.source_url || "";
     }
     u.old_units.push({
+      id: r.old_id,
       name: r.old_name,
       type: r.old_type || "",
       parent_name: r.parent_name || "",
+      province_old: r.province_old || "",
       merge_type: r.merge_type === "mot_phan" ? "mot_phan" : "toan_bo",
     });
   }
@@ -68,7 +70,7 @@ async function listUnits(req, res) {
       );
     }
 
-    const key = `units:${where}:${param}`;
+    const key = `units:v2:${where}:${param}`;
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < CACHE_MS) {
       res.set("Cache-Control", "public, max-age=300");
@@ -82,9 +84,11 @@ async function listUnits(req, res) {
               nu.name AS new_unit_name,
               nu.unit_type AS new_unit_type,
               to_jsonb(nu)->>'headquarters_address' AS headquarters_address,
+              ou.id AS old_id,
               ou.name AS old_name,
               ou.unit_type AS old_type,
               ou.parent_name,
+              ou.province_old,
               um.merge_type,
               ld.doc_code AS decision_number,
               to_char(ld.issue_date, 'YYYY-MM-DD') AS decision_date,
@@ -93,7 +97,7 @@ async function listUnits(req, res) {
          JOIN provinces_new pn ON pn.id = nu.province_new_id
          JOIN unit_mapping um ON um.new_unit_id = nu.id
          JOIN admin_units_old ou ON ou.id = um.old_unit_id
-         LEFT JOIN legal_documents ld ON ld.id = um.decision_document_id
+         LEFT JOIN legal_documents ld ON ld.id = um.decision_document_id AND ld.id > 0
         WHERE ${where}
         ORDER BY nu.name, ou.name`,
       [param],
@@ -112,7 +116,6 @@ async function listUnits(req, res) {
       "[directory] listUnits:",
       err.code || err.name,
       err.message || (err.errors || []).map((e) => e.message).join(" | "),
-      err.stack,
     );
     return fail(res, 500, "INTERNAL_ERROR", "Không đọc được danh sách đơn vị.");
   }
@@ -129,6 +132,7 @@ async function listLegalDocuments(_req, res) {
               source_url
          FROM legal_documents
         WHERE doc_code IS NOT NULL
+          AND id > 0 -- id âm là tài liệu tổng hợp tự động (chunk synthetic), không phải văn bản pháp lý
         ORDER BY issue_date DESC NULLS LAST, doc_code`,
     );
     const body = { success: true, data: rows, message: "OK" };
@@ -136,10 +140,9 @@ async function listLegalDocuments(_req, res) {
     return res.json(body);
   } catch (err) {
     console.error(
-      "[directory] listUnits:",
+      "[directory] listLegalDocuments:",
       err.code || err.name,
       err.message || (err.errors || []).map((e) => e.message).join(" | "),
-      err.stack,
     );
     return fail(
       res,

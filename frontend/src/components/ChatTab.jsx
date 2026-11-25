@@ -53,6 +53,32 @@ function formatAnswerText(text) {
     .trim();
 }
 
+// Nguồn "Dữ liệu tổng hợp tự động..." là bảng ánh xạ nội bộ, không có đường dẫn.
+// Thay bằng nghị quyết căn cứ của tỉnh (lấy từ dữ liệu thật) để người dùng bấm xem được.
+function isSyntheticSource(src) {
+  return !src.source_url && /tổng hợp|tự động/i.test(src.title || "");
+}
+
+function resolveSources(list, basisDoc) {
+  const out = [];
+  const seen = new Set();
+  for (const s of list || []) {
+    const item =
+      basisDoc && isSyntheticSource(s)
+        ? {
+            title: `Nghị quyết ${basisDoc.code}`,
+            section: "bảng ánh xạ đơn vị",
+            source_url: basisDoc.url,
+          }
+        : s;
+    const key = `${item.title}|${item.section || ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 function normalize(s) {
   return s
     .toLowerCase()
@@ -181,6 +207,7 @@ export default function ChatTab({
   onProvince,
   prefill,
   units,
+  basis,
 }) {
   // đọc lịch sử và trạng thái giao diện đã lưu (một lần khi mở trang)
   const [initial] = useState(() => {
@@ -564,6 +591,29 @@ export default function ChatTab({
         ? "Backend không phản hồi"
         : "Đang kiểm tra backend";
   const nearLimit = chatInput.length >= QUESTION_MAX_LENGTH - 80;
+  const basisDoc = basis?.[selectedProvince];
+  const fineprint = (
+    <>
+      Căn cứ:{" "}
+      {basisDoc ? (
+        basisDoc.url ? (
+          <a
+            className="fine-link"
+            href={basisDoc.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Nghị quyết {basisDoc.code}
+          </a>
+        ) : (
+          `Nghị quyết ${basisDoc.code}`
+        )
+      ) : (
+        currentProvince.legalBasis || GENERIC_LEGAL_BASIS
+      )}
+      . Hãy đối chiếu văn bản gốc khi dùng cho thủ tục pháp lý.
+    </>
+  );
 
   return (
     <div
@@ -808,7 +858,10 @@ export default function ChatTab({
                               <span className="sources-title">
                                 Căn cứ pháp lý
                               </span>
-                              {(m.sources || []).map((src, si) => {
+                              {resolveSources(
+                                m.sources,
+                                basis?.[active?.province || selectedProvince],
+                              ).map((src, si) => {
                                 const label = `${src.title}${src.section ? `, ${src.section}` : ""}`;
                                 const icon = <Icon name="file" size={13} />;
                                 return /^https?:\/\//.test(
@@ -951,9 +1004,7 @@ export default function ChatTab({
               </button>
             </div>
             <p className="fineprint">
-              {isLive
-                ? `Căn cứ: ${currentProvince.legalBasis || GENERIC_LEGAL_BASIS}. Hãy đối chiếu văn bản gốc khi dùng cho thủ tục pháp lý.`
-                : "Đang dùng dữ liệu minh họa của tỉnh này."}
+              {isLive ? fineprint : "Đang dùng dữ liệu minh họa của tỉnh này."}
             </p>
           </div>
         </div>

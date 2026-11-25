@@ -58,6 +58,7 @@ const FAQ = [
 ];
 
 export default function AboutTab({ docs, stats, actions }) {
+  const national = docs.find((d) => d.code === NATIONAL_BASIS.code);
   return (
     <div className="page ab">
       <div className="wrap narrow">
@@ -132,7 +133,9 @@ export default function AboutTab({ docs, stats, actions }) {
                   {oldProvinceList(p).join(" · ")}
                 </span>
                 <span className="scope-n">
-                  {(stats.perProvince[p.code]?.newUnits ?? 0).toLocaleString("vi-VN")}{" "}
+                  {(stats.perProvince[p.code]?.newUnits ?? 0).toLocaleString(
+                    "vi-VN",
+                  )}{" "}
                   đơn vị cấp xã mới
                 </span>
               </button>
@@ -140,7 +143,7 @@ export default function AboutTab({ docs, stats, actions }) {
           </div>
         </section>
 
-        <section className="ab-sec">
+        <section className="ab-sec" id="van-ban">
           <h2>Văn bản căn cứ</h2>
           <ul className="docs">
             <li className="doc national">
@@ -154,6 +157,16 @@ export default function AboutTab({ docs, stats, actions }) {
                   Cả nước · có hiệu lực từ 01/07/2025
                 </span>
               </div>
+              {national?.url && (
+                <a
+                  className="doc-link"
+                  href={national.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Xem văn bản <Icon name="external" size={14} />
+                </a>
+              )}
             </li>
             {docs
               .filter((d) => d.code !== NATIONAL_BASIS.code)

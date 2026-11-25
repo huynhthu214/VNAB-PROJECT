@@ -177,6 +177,8 @@ export function LineageFlow({ unit, query = "", hits }) {
               </span>
               <span className="chip-old2-sub">
                 {o.parent ? <Highlight text={o.parent} query={query} /> : null}
+                {o.parent && o.provinceOld ? " · " : ""}
+                {o.provinceOld || null}
               </span>
               <MergeBadge merge={o.merge} />
             </div>
@@ -210,10 +212,33 @@ export function SampleNotice({ names }) {
   );
 }
 
+/* Báo tỉnh nào chưa tải được dữ liệu thật (thay cho dữ liệu minh họa) */
+export function LoadNotice({ names, onRetry }) {
+  if (!names.length) return null;
+  return (
+    <div className="inline-notice warn" role="alert">
+      <Icon name="alert" size={16} />
+      <span>
+        Chưa tải được dữ liệu của{" "}
+        {names.length > 2
+          ? `${names.slice(0, 2).join(", ")} và ${names.length - 2} tỉnh, thành khác`
+          : names.join(", ")}
+        .
+      </span>
+      {onRetry && (
+        <button className="link-btn" onClick={onRetry}>
+          Thử lại
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function LegalLink({ unit }) {
   if (unit.sample) return <span className="meta-dim">Dữ liệu minh họa</span>;
   if (!unit.decisionNumber)
     return <span className="meta-dim">Đang cập nhật</span>;
+  // chưa có đường dẫn văn bản gốc: vẫn hiện số hiệu, nhưng nói rõ là chưa có liên kết
   const label = `NQ ${unit.decisionNumber}`;
   return unit.sourceUrl ? (
     <a
@@ -226,6 +251,6 @@ export function LegalLink({ unit }) {
       <Icon name="external" size={13} />
     </a>
   ) : (
-    <span>{label}</span>
+    <span title="Chưa có liên kết tới văn bản gốc">{label}</span>
   );
 }

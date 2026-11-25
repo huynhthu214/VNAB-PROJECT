@@ -12,6 +12,7 @@ import {
   LineageFlow,
   LegalLink,
   SampleNotice,
+  LoadNotice,
 } from "./shared.jsx";
 
 const MANY = 4; // ngưỡng "gộp từ nhiều đơn vị cũ"
@@ -27,11 +28,7 @@ function UnitRow({ unit, open, onToggle, onAsk }) {
   const partial = unit.oldUnits.some((o) => o.merge === "mot_phan");
   return (
     <li className={`erow ${open ? "open" : ""}`}>
-      <button
-        className="erow-head"
-        onClick={onToggle}
-        aria-expanded={open}
-      >
+      <button className="erow-head" onClick={onToggle} aria-expanded={open}>
         <span className="erow-name">
           {unit.newType && <span className="erow-kind">{unit.newType}</span>}
           {unit.newName.replace(/^(Phường|Xã|Thị trấn|Đặc khu)\s+/i, "")}
@@ -88,6 +85,8 @@ export default function ExploreTab({
   province,
   onProvince,
   onAsk,
+  failed = [],
+  onRetry,
 }) {
   const p = provinceByCode(province);
   const [q, setQ] = useState("");
@@ -109,21 +108,23 @@ export default function ExploreTab({
   );
 
   const totals = useMemo(() => {
-    let old = 0;
+    // đơn vị cũ bị chia cho nhiều đơn vị mới chỉ tính một lần
+    const oldSeen = new Set();
     let part = 0;
     let many = 0;
     for (const u of provUnits) {
-      old += u.oldUnits.length;
+      for (const o of u.oldUnits) oldSeen.add(o.key || o.name);
       if (u.oldUnits.some((o) => o.merge === "mot_phan")) part++;
       if (u.oldUnits.length >= MANY) many++;
     }
-    return { new: provUnits.length, old, part, many };
+    return { new: provUnits.length, old: oldSeen.size, part, many };
   }, [provUnits]);
 
   const list = useMemo(() => {
     const fq = fold(q).trim();
     let r = provUnits.filter((u) => {
-      if (onlyPartial && !u.oldUnits.some((o) => o.merge === "mot_phan")) return false;
+      if (onlyPartial && !u.oldUnits.some((o) => o.merge === "mot_phan"))
+        return false;
       if (onlyMany && u.oldUnits.length < MANY) return false;
       if (fq) {
         const hay = [u.newName, ...u.oldUnits.map((o) => o.name)]
@@ -188,7 +189,11 @@ export default function ExploreTab({
             ))}
           </nav>
 
-          <section className="ex-main" aria-live="polite" style={{ "--c": p.color }}>
+          <section
+            className="ex-main"
+            aria-live="polite"
+            style={{ "--c": p.color }}
+          >
             <div className="ex-head" style={{ "--c": p.color }}>
               <span className="ex-head-bar" />
               <div className="ex-head-top">
@@ -204,9 +209,7 @@ export default function ExploreTab({
                   <span className="lineage-arrow" aria-hidden="true">
                     <Icon name="arrow" size={18} />
                   </span>
-                  <span className="chip-new">
-                    {p.name}
-                  </span>
+                  <span className="chip-new">{p.name}</span>
                 </div>
               </div>
               <dl className="ex-nums">
@@ -226,6 +229,10 @@ export default function ExploreTab({
             </div>
 
             <SampleNotice names={sample} />
+            <LoadNotice
+              names={failed.includes(province) ? [p.name] : []}
+              onRetry={onRetry}
+            />
 
             <div className="filters">
               <div className="search-box compact">
@@ -262,7 +269,6 @@ export default function ExploreTab({
                 <Icon name={onlyPartial ? "check" : "filter"} size={15} />
                 Chỉ nhận một phần
               </button>
-
             </div>
 
             {loading ? (
@@ -299,17 +305,20 @@ export default function ExploreTab({
                     {list.length.toLocaleString("vi-VN")} đơn vị
                     {filtered ? " khớp bộ lọc" : ""}
                   </p>
-              <label className="select-pill small">
-                <span>Sắp xếp</span>
-                <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                  {SORTS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-                <Icon name="chevron" size={15} />
-              </label>
+                  <label className="select-pill small">
+                    <span>Sắp xếp</span>
+                    <select
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value)}
+                    >
+                      {SORTS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                    <Icon name="chevron" size={15} />
+                  </label>
                 </div>
                 <ul className="elist">
                   {list.slice(0, limit).map((u) => (
