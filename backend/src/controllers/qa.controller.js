@@ -249,13 +249,18 @@ async function runStructuredLookup(
   const q = on.includes(modelName)
     ? await canonicalizeQuestion(pool, question)
     : question;
-  return aggIntent
+
+  const unitResult = aggIntent
     ? (await tryNewUnitMatch(q, provinceId)) ||
-        (await tryOldUnitMatch(q, provinceId)) ||
-        (await tryOldProvinceMatch(q))
+      (await tryOldUnitMatch(q, provinceId))
     : (await tryOldUnitMatch(q, provinceId)) ||
-        (await tryNewUnitMatch(q, provinceId)) ||
-        (await tryOldProvinceMatch(q));
+      (await tryNewUnitMatch(q, provinceId));
+
+  return (
+    unitResult ||
+    (await tryOldParentMatch(q, provinceId)) ||
+    (await tryOldProvinceMatch(q))
+  );
 }
 
 async function tryOldUnitMatch(question, provinceId = null) {
@@ -506,6 +511,146 @@ async function tryOldProvinceMatch(question) {
   };
 }
 
+// Chuẩn hóa tên quận/huyện/thành phố cũ để xử lý
+// các cách viết: TP. Mỹ Tho và Thành phố Mỹ Tho.
+function normalizeParentLabel(value) {
+  return stripVN(value || "")
+    .replace(/\bthanh pho\b/g, "tp")
+    .replace(/\s*\(cu\)\s*/g, " ")
+    .replace(/[.,]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Kiểm tra câu hỏi có ý định tra cứu địa giới hành chính.
+function isParentLookupIntent(question) {
+  const q = stripVN(question);
+
+  return [
+    "thuoc",
+    "hien nay",
+    "hien tai",
+    "sau sap xep",
+    "sap nhap",
+    "don vi nao",
+    "don vi hanh chinh",
+    "phuong nao",
+    "xa nao",
+    "duoc sap xep",
+  ].some((keyword) => q.includes(keyword));
+}
+
+// Tra cứu các đơn vị mới được hình thành từ
+// một thành phố/quận/huyện cũ.
+async function tryOldParentMatch(question, provinceId = null) {
+  if (!isParentLookupIntent(question)) return null;
+
+  const qNorm = normalizeParentLabel(question);
+
+  // Tìm tên địa bàn cũ trong dữ liệu parent_name.
+  const { rows: parentRows } = await pool.query(`
+    SELECT DISTINCT parent_name
+    FROM admin_units_old
+    WHERE parent_name IS NOT NULL
+      AND TRIM(parent_name) <> ''
+  `);
+
+  const matchedParent = parentRows
+    .map((r) => r.parent_name)
+    .filter((name) => {
+      const normalized = normalizeParentLabel(name);
+      return normalized.length >= 5 && qNorm.includes(normalized);
+    })
+    .sort(
+      (a, b) => normalizeParentLabel(b).length - normalizeParentLabel(a).length,
+    )[0];
+
+  if (!matchedParent) return null;
+
+  // Lấy toàn bộ phường/xã cũ thuộc địa bàn đó
+  // và ánh xạ sang các đơn vị mới.
+  const { rows } = await pool.query(
+    `
+    SELECT
+      o.name AS old_name,
+      o.parent_name,
+      o.province_old,
+      n.name AS new_name,
+      n.province_new_id,
+      pn.name AS new_province_name,
+      m.article_no,
+      m.clause_no,
+      m.point_no,
+      d.doc_code,
+      d.title AS doc_title,
+      d.source_url,
+      m.notes
+
+    FROM admin_units_old o
+
+    JOIN unit_mapping m
+      ON m.old_unit_id = o.id
+
+    JOIN admin_units_new n
+      ON n.id = m.new_unit_id
+
+    JOIN provinces_new pn
+      ON pn.id = n.province_new_id
+
+    LEFT JOIN legal_documents d
+      ON d.id = m.decision_document_id
+
+    WHERE o.parent_name = $1
+
+    ORDER BY n.name, o.name
+  `,
+    [matchedParent],
+  );
+
+  if (rows.length === 0) return null;
+
+  // Lọc theo tỉnh đang được chọn trên giao diện.
+  const scopedRows = provinceId
+    ? rows.filter((r) => Number(r.province_new_id) === Number(provinceId))
+    : rows;
+
+  if (scopedRows.length === 0) {
+    const otherProvinces = [...new Set(rows.map((r) => r.new_province_name))];
+
+    return {
+      answer:
+        `${matchedParent} (cũ) hiện có các đơn vị mới thuộc: ` +
+        `${otherProvinces.join(", ")}. ` +
+        `Vui lòng chuyển sang tab tỉnh/thành tương ứng để tra cứu.`,
+
+      answer_type: "structured_lookup",
+      answer_level: "unit",
+      model_used: "rule_based",
+      confidence: 0.5,
+      sources: [],
+      suggested_provinces: [...new Set(rows.map((r) => r.province_new_id))],
+    };
+  }
+
+  // Loại bỏ các tên phường/xã bị trùng.
+  const newNames = [...new Set(scopedRows.map((r) => r.new_name))];
+
+  const answer =
+    `${matchedParent} (cũ) hiện nay được sắp xếp thành ` +
+    `các đơn vị hành chính cấp xã/phường: ` +
+    `${newNames.join(", ")}` +
+    `${legalSuffix(scopedRows)}.`;
+
+  return {
+    answer,
+    answer_type: "structured_lookup",
+    answer_level: "unit",
+    model_used: "rule_based",
+    confidence: 0.95,
+    sources: uniqueSourcesFrom(scopedRows),
+  };
+}
+
 // ============ MODEL 2: NAIVE RAG (vector-only) ============
 const SCOPE_KEYWORDS = [
   "Hồ Chí Minh",
@@ -752,7 +897,7 @@ async function tryAdvancedRAG(
     const synthAll = process.env.M3_SYNTH_ALL === "1";
     const isSynthetic = synthAll
       ? topChunk?.doc_code?.startsWith("SYNTHETIC-")
-      : topChunk?.doc_code === "SYNTHETIC-NEW2OLD";
+      : ["SYNTHETIC-NEW2OLD", "SYNTHETIC-OLD2NEW"].includes(topChunk?.doc_code);
     const thr = isSynthetic ? RERANK_THRESHOLD_NEW2OLD : RERANK_THRESHOLD;
     debugLog({
       kind: "rerank_decision",

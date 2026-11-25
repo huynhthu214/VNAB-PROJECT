@@ -253,3 +253,10 @@ ALTER TABLE province_mapping
 --    province_mapping, admin_units_old, admin_units_new, unit_mapping,
 --    document_chunks, qa_logs)
 --
+
+ALTER TABLE document_chunks
+ADD COLUMN IF NOT EXISTS province_new_id INTEGER
+REFERENCES provinces_new(id);
+
+CREATE INDEX IF NOT EXISTS idx_chunks_province_new_id
+ON document_chunks(province_new_id);
