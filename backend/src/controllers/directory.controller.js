@@ -108,7 +108,12 @@ async function listUnits(req, res) {
     res.set("Cache-Control", "public, max-age=300");
     return res.json(body);
   } catch (err) {
-    console.error("[directory] listUnits:", err.message);
+    console.error(
+      "[directory] listUnits:",
+      err.code || err.name,
+      err.message || (err.errors || []).map((e) => e.message).join(" | "),
+      err.stack,
+    );
     return fail(res, 500, "INTERNAL_ERROR", "Không đọc được danh sách đơn vị.");
   }
 }
@@ -130,7 +135,12 @@ async function listLegalDocuments(_req, res) {
     cache.set("docs", { at: Date.now(), body });
     return res.json(body);
   } catch (err) {
-    console.error("[directory] listLegalDocuments:", err.message);
+    console.error(
+      "[directory] listUnits:",
+      err.code || err.name,
+      err.message || (err.errors || []).map((e) => e.message).join(" | "),
+      err.stack,
+    );
     return fail(
       res,
       500,
