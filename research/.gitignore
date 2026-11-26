@@ -1,0 +1,33 @@
+# Working data, detailed review and private artifacts
+/data/
+/reports/data_issues*.csv
+/reports/legacy_differences.csv
+/reports/legacy_batch_matches.csv
+/reports/legacy_relation_signals.jsonl
+/reports/*.local.md
+/private/
+**/test_reservation/
+**/test_review/
+**/*reservation*.json
+**/qa_test*
+**/mrc_test*
+
+# Share the two immutable releases only; extracted copies stay local.
+/handoff/*/*
+!/handoff/pilot-v1.1/vnab-pilot-v1.1.zip
+!/handoff/v1.0/vnab-dataset-v1.0.zip
+
+# Local runtime, editor and model files
+**/.env*
+**/.cache/
+**/.pytest_cache/
+**/.venv/
+**/checkpoints/
+**/checkpoint-*/
+**/*.ckpt
+**/*.safetensors
+**/*.pt
+**/*.pth
+**/*.bin
+**/*.tmp
+**/*.lnk

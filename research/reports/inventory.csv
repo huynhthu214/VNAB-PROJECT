@@ -1,0 +1,9 @@
+province,workbook,source_rows,old_units_resolved,new_units_resolved,sheet1_new_codes,province_rows,joined_rows,old_multiple_targets,new_multiple_origins,old_homonyms,unit_source_documents,unit_source_urls,province_source_documents,province_source_urls,toan_bo,mot_phan,khong_sap_xep,chuyen_doi,unknown,merge_type_raw_counts
+TP.HCM,backend/data/du_lieu_tphcm_final_v2.xlsx,493,441,167,168,3,492,47,160,27,1,1,1,1,395,98,0,0,0,"{""một phần"": 98, ""toàn bộ"": 395}"
+Đồng Nai,backend/data/dong_nai_data_collection.xlsx,271,270,95,95,2,271,1,88,15,1,1,1,1,262,2,7,0,0,"{""không sắp xếp"": 7, ""một phần"": 2, ""toàn bộ"": 262}"
+Tây Ninh,backend/data/tay_ninh_data_collection.xlsx,302,280,96,96,2,302,21,96,17,1,1,1,1,259,43,0,0,0,"{""một phần"": 43, ""toàn bộ"": 259}"
+Cần Thơ,backend/data/can_tho_data_collection.xlsx,266,263,103,103,3,266,3,95,14,1,1,1,1,252,6,8,0,0,"{""không sắp xếp"": 8, ""một phần"": 6, ""toàn bộ"": 252}"
+Vĩnh Long,backend/data/vinh_long_data_collection.xlsx,359,354,124,124,3,359,5,120,24,1,1,1,1,345,10,4,0,0,"{""không sắp xếp"": 4, ""một phần"": 10, ""toàn bộ"": 345}"
+Đồng Tháp,backend/data/dong_thap_data_collection.xlsx,308,305,102,102,2,308,3,102,22,1,1,1,1,302,6,0,0,0,"{""một phần"": 6, ""toàn bộ"": 302}"
+An Giang,backend/data/an_giang_data_collection.xlsx,302,298,102,102,2,302,3,95,8,1,1,1,1,288,7,6,1,0,"{""Sắp xếp toàn bộ xã Thổ Châu thành đặc khu Thổ Châu"": 1, ""không sắp xếp"": 6, ""một phần"": 7, ""toàn bộ"": 288}"
+Cà Mau,backend/data/ca_mau_data_collection.xlsx,186,164,64,64,2,186,19,63,5,1,1,1,1,144,41,1,0,0,"{""không sắp xếp"": 1, ""một phần"": 41, ""toàn bộ"": 144}"

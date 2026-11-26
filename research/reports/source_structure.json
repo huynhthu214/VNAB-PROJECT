@@ -1,0 +1,760 @@
+{
+  "workbooks": [
+    {
+      "source_file": "backend/data/du_lieu_tphcm_final_v2.xlsx",
+      "sha256": "ada613a3a1789c4f43efa3f67b212c81f938fa1e7202821d2b87be27fddb57aa",
+      "sheets": {
+        "XaPhuong": {
+          "header_row": 1,
+          "header": {
+            "A": "old_unit_name",
+            "B": "old_unit_type",
+            "C": "old_parent",
+            "D": "new_unit_name",
+            "E": "new_unit_type",
+            "F": "new_parent",
+            "G": "decision_number",
+            "H": "decision_date",
+            "I": "source_document_url",
+            "J": "notes",
+            "K": "merge_type",
+            "L": "review_status"
+          },
+          "data_rows": 493
+        },
+        "Sheet1": {
+          "header_row": 1,
+          "header": {
+            "A": "lookup",
+            "B": "Phường/Xã cũ",
+            "C": "Quận/Huyện cũ",
+            "D": "Tỉnh/TP cũ (trước sáp nhập)",
+            "E": "Tỉnh/TP mới",
+            "F": "Phường/Xã mới (từ 1/7/2025)",
+            "G": "Loại đơn vị mới",
+            "H": "Mã phường/xã mới",
+            "I": "Hình thức sáp nhập",
+            "J": "Diện tích mới (km²)"
+          },
+          "data_rows": 493
+        },
+        "Tinh": {
+          "header_row": 1,
+          "header": {
+            "A": "old_province_name",
+            "B": "new_province_name",
+            "C": "decision_number",
+            "D": "decision_date",
+            "E": "effective_date",
+            "F": "source_document_url",
+            "G": "notes"
+          },
+          "data_rows": 3
+        }
+      }
+    },
+    {
+      "source_file": "backend/data/dong_nai_data_collection.xlsx",
+      "sha256": "999cfa7555560793c56ea53187b0f6925be5ce21c52e2dd99d08825bf8ebe378",
+      "sheets": {
+        "Dashboard": {
+          "header_row": 1,
+          "header": {
+            "A": "BẢNG THEO DÕI TIẾN ĐỘ RÀ SOÁT DỮ LIỆU ĐỒNG NAI"
+          },
+          "data_rows": 10
+        },
+        "XaPhuong": {
+          "header_row": 1,
+          "header": {
+            "A": "old_unit_name",
+            "B": "old_unit_type",
+            "C": "old_parent",
+            "D": "new_unit_name",
+            "E": "new_unit_type",
+            "F": "new_parent",
+            "G": "decision_number",
+            "H": "decision_date",
+            "I": "source_document_url",
+            "J": "notes",
+            "K": "merge_type",
+            "L": "review_status"
+          },
+          "data_rows": 271
+        },
+        "Sheet1": {
+          "header_row": 1,
+          "header": {
+            "A": "lookup",
+            "B": "Phường/Xã cũ",
+            "C": "Quận/Huyện cũ",
+            "D": "Tỉnh/TP cũ (trước sáp nhập)",
+            "E": "Tỉnh/TP mới",
+            "F": "Phường/Xã mới (từ 1/7/2025)",
+            "G": "Loại đơn vị mới",
+            "H": "Mã phường/xã mới",
+            "I": "Mã phường/xã cũ",
+            "J": "Hình thức sáp nhập",
+            "K": "Diện tích mới (km²)"
+          },
+          "data_rows": 271
+        },
+        "Sheet2": {
+          "header_row": 1,
+          "header": {
+            "I": "Số phường",
+            "J": "Số xã",
+            "K": "Số đặc khu"
+          },
+          "data_rows": 95
+        },
+        "Tinh": {
+          "header_row": 1,
+          "header": {
+            "A": "old_province_name",
+            "B": "new_province_name",
+            "C": "decision_number",
+            "D": "decision_date",
+            "E": "effective_date",
+            "F": "source_document_url",
+            "G": "notes"
+          },
+          "data_rows": 2
+        },
+        "HuongDan": {
+          "header_row": 1,
+          "header": {
+            "A": "HƯỚNG DẪN RÀ SOÁT DỮ LIỆU — ĐỌC TRƯỚC KHI LÀM"
+          },
+          "data_rows": 23
+        }
+      }
+    },
+    {
+      "source_file": "backend/data/tay_ninh_data_collection.xlsx",
+      "sha256": "fbb6b7d317218dfadde5298cebdfe98875aa4e14be3dc3491393e717ae2b14f7",
+      "sheets": {
+        "Dashboard": {
+          "header_row": 1,
+          "header": {
+            "A": "BẢNG THEO DÕI TIẾN ĐỘ RÀ SOÁT DỮ LIỆU TÂY NINH"
+          },
+          "data_rows": 10
+        },
+        "XaPhuong": {
+          "header_row": 1,
+          "header": {
+            "A": "old_unit_name",
+            "B": "old_unit_type",
+            "C": "old_parent",
+            "D": "new_unit_name",
+            "E": "new_unit_type",
+            "F": "new_parent",
+            "G": "decision_number",
+            "H": "decision_date",
+            "I": "source_document_url",
+            "J": "notes",
+            "K": "merge_type",
+            "L": "review_status"
+          },
+          "data_rows": 302
+        },
+        "Sheet1": {
+          "header_row": 1,
+          "header": {
+            "A": "lookup",
+            "B": "Phường/Xã cũ",
+            "C": "Quận/Huyện cũ",
+            "D": "Tỉnh/TP cũ (trước sáp nhập)",
+            "E": "Tỉnh/TP mới",
+            "F": "Phường/Xã mới (từ 1/7/2025)",
+            "G": "Loại đơn vị mới",
+            "H": "Mã phường/xã mới",
+            "I": "Mã phường/xã cũ",
+            "J": "Hình thức sáp nhập",
+            "K": "Diện tích mới (km²)"
+          },
+          "data_rows": 302
+        },
+        "Sheet2": {
+          "header_row": 1,
+          "header": {
+            "I": "Số phường",
+            "J": "Số xã",
+            "K": "Số đặc khu"
+          },
+          "data_rows": 96
+        },
+        "Tinh": {
+          "header_row": 1,
+          "header": {
+            "A": "old_province_name",
+            "B": "new_province_name",
+            "C": "decision_number",
+            "D": "decision_date",
+            "E": "effective_date",
+            "F": "source_document_url",
+            "G": "notes"
+          },
+          "data_rows": 2
+        },
+        "HuongDan": {
+          "header_row": 1,
+          "header": {
+            "A": "HƯỚNG DẪN RÀ SOÁT DỮ LIỆU — ĐỌC TRƯỚC KHI LÀM"
+          },
+          "data_rows": 23
+        }
+      }
+    },
+    {
+      "source_file": "backend/data/can_tho_data_collection.xlsx",
+      "sha256": "49280b139a93689076fd89f7e8c0c3c4b43c3175330bfa972b13132b47c31286",
+      "sheets": {
+        "Dashboard": {
+          "header_row": 1,
+          "header": {
+            "A": "BẢNG THEO DÕI TIẾN ĐỘ RÀ SOÁT DỮ LIỆU CẦN THƠ"
+          },
+          "data_rows": 10
+        },
+        "XaPhuong": {
+          "header_row": 1,
+          "header": {
+            "A": "old_unit_name",
+            "B": "old_unit_type",
+            "C": "old_parent",
+            "D": "new_unit_name",
+            "E": "new_unit_type",
+            "F": "new_parent",
+            "G": "decision_number",
+            "H": "decision_date",
+            "I": "source_document_url",
+            "J": "notes",
+            "K": "merge_type",
+            "L": "review_status"
+          },
+          "data_rows": 266
+        },
+        "Sheet1": {
+          "header_row": 1,
+          "header": {
+            "A": "lookup",
+            "B": "Phường/Xã cũ",
+            "C": "Quận/Huyện cũ",
+            "D": "Tỉnh/TP cũ (trước sáp nhập)",
+            "E": "Tỉnh/TP mới",
+            "F": "Phường/Xã mới (từ 1/7/2025)",
+            "G": "Loại đơn vị mới",
+            "H": "Mã phường/xã mới",
+            "I": "Mã phường/xã cũ",
+            "J": "Hình thức sáp nhập",
+            "K": "Diện tích mới (km²)"
+          },
+          "data_rows": 266
+        },
+        "Sheet2": {
+          "header_row": 1,
+          "header": {
+            "I": "Số phường",
+            "J": "Số xã",
+            "K": "Số đặc khu"
+          },
+          "data_rows": 103
+        },
+        "Tinh": {
+          "header_row": 1,
+          "header": {
+            "A": "old_province_name",
+            "B": "new_province_name",
+            "C": "decision_number",
+            "D": "decision_date",
+            "E": "effective_date",
+            "F": "source_document_url",
+            "G": "notes"
+          },
+          "data_rows": 3
+        },
+        "HuongDan": {
+          "header_row": 1,
+          "header": {
+            "A": "HƯỚNG DẪN RÀ SOÁT DỮ LIỆU — ĐỌC TRƯỚC KHI LÀM"
+          },
+          "data_rows": 23
+        }
+      }
+    },
+    {
+      "source_file": "backend/data/vinh_long_data_collection.xlsx",
+      "sha256": "89e46106f82899c3e1578af1e1d58fe2960ebfdc6d941cefc60f9f6ee40f7f65",
+      "sheets": {
+        "Dashboard": {
+          "header_row": 1,
+          "header": {
+            "A": "BẢNG THEO DÕI TIẾN ĐỘ RÀ SOÁT DỮ LIỆU VĨNH LONG"
+          },
+          "data_rows": 10
+        },
+        "XaPhuong": {
+          "header_row": 1,
+          "header": {
+            "A": "old_unit_name",
+            "B": "old_unit_type",
+            "C": "old_parent",
+            "D": "new_unit_name",
+            "E": "new_unit_type",
+            "F": "new_parent",
+            "G": "decision_number",
+            "H": "decision_date",
+            "I": "source_document_url",
+            "J": "notes",
+            "K": "merge_type",
+            "L": "review_status"
+          },
+          "data_rows": 359
+        },
+        "Sheet1": {
+          "header_row": 1,
+          "header": {
+            "A": "lookup",
+            "B": "Phường/Xã cũ",
+            "C": "Quận/Huyện cũ",
+            "D": "Tỉnh/TP cũ (trước sáp nhập)",
+            "E": "Tỉnh/TP mới",
+            "F": "Phường/Xã mới (từ 1/7/2025)",
+            "G": "Loại đơn vị mới",
+            "H": "Mã phường/xã mới",
+            "I": "Mã phường/xã cũ",
+            "J": "Hình thức sáp nhập",
+            "K": "Diện tích mới (km²)"
+          },
+          "data_rows": 359
+        },
+        "Sheet2": {
+          "header_row": 1,
+          "header": {
+            "I": "Số phường",
+            "J": "Số xã",
+            "K": "Số đặc khu"
+          },
+          "data_rows": 124
+        },
+        "Tinh": {
+          "header_row": 1,
+          "header": {
+            "A": "old_province_name",
+            "B": "new_province_name",
+            "C": "decision_number",
+            "D": "decision_date",
+            "E": "effective_date",
+            "F": "source_document_url",
+            "G": "notes"
+          },
+          "data_rows": 3
+        },
+        "HuongDan": {
+          "header_row": 1,
+          "header": {
+            "A": "HƯỚNG DẪN RÀ SOÁT DỮ LIỆU — ĐỌC TRƯỚC KHI LÀM"
+          },
+          "data_rows": 23
+        }
+      }
+    },
+    {
+      "source_file": "backend/data/dong_thap_data_collection.xlsx",
+      "sha256": "4020a8acc5f7ee99d655926d8b2f798cf564b0fa8f682f1118964f0eb8f93686",
+      "sheets": {
+        "Dashboard": {
+          "header_row": 1,
+          "header": {
+            "A": "BẢNG THEO DÕI TIẾN ĐỘ RÀ SOÁT DỮ LIỆU ĐỒNG THÁP"
+          },
+          "data_rows": 10
+        },
+        "XaPhuong": {
+          "header_row": 1,
+          "header": {
+            "A": "old_unit_name",
+            "B": "old_unit_type",
+            "C": "old_parent",
+            "D": "new_unit_name",
+            "E": "new_unit_type",
+            "F": "new_parent",
+            "G": "decision_number",
+            "H": "decision_date",
+            "I": "source_document_url",
+            "J": "notes",
+            "K": "merge_type",
+            "L": "review_status"
+          },
+          "data_rows": 308
+        },
+        "Sheet1": {
+          "header_row": 1,
+          "header": {
+            "A": "lookup",
+            "B": "Phường/Xã cũ",
+            "C": "Quận/Huyện cũ",
+            "D": "Tỉnh/TP cũ (trước sáp nhập)",
+            "E": "Tỉnh/TP mới",
+            "F": "Phường/Xã mới (từ 1/7/2025)",
+            "G": "Loại đơn vị mới",
+            "H": "Mã phường/xã mới",
+            "I": "Mã phường/xã cũ",
+            "J": "Hình thức sáp nhập",
+            "K": "Diện tích mới (km²)"
+          },
+          "data_rows": 308
+        },
+        "Sheet2": {
+          "header_row": 1,
+          "header": {
+            "I": "Số phường",
+            "J": "Số xã",
+            "K": "Số đặc khu"
+          },
+          "data_rows": 102
+        },
+        "Tinh": {
+          "header_row": 1,
+          "header": {
+            "A": "old_province_name",
+            "B": "new_province_name",
+            "C": "decision_number",
+            "D": "decision_date",
+            "E": "effective_date",
+            "F": "source_document_url",
+            "G": "notes"
+          },
+          "data_rows": 2
+        },
+        "HuongDan": {
+          "header_row": 1,
+          "header": {
+            "A": "HƯỚNG DẪN RÀ SOÁT DỮ LIỆU — ĐỌC TRƯỚC KHI LÀM"
+          },
+          "data_rows": 23
+        }
+      }
+    },
+    {
+      "source_file": "backend/data/an_giang_data_collection.xlsx",
+      "sha256": "4d2303f151d6b5315c1ed19b2d287959d0f2478daf75f825fb9d5678e0618ade",
+      "sheets": {
+        "Dashboard": {
+          "header_row": 1,
+          "header": {
+            "A": "BẢNG THEO DÕI TIẾN ĐỘ RÀ SOÁT DỮ LIỆU AN GIANG"
+          },
+          "data_rows": 10
+        },
+        "XaPhuong": {
+          "header_row": 1,
+          "header": {
+            "A": "old_unit_name",
+            "B": "old_unit_type",
+            "C": "old_parent",
+            "D": "new_unit_name",
+            "E": "new_unit_type",
+            "F": "new_parent",
+            "G": "decision_number",
+            "H": "decision_date",
+            "I": "source_document_url",
+            "J": "notes",
+            "K": "merge_type",
+            "L": "review_status"
+          },
+          "data_rows": 302
+        },
+        "Sheet1": {
+          "header_row": 1,
+          "header": {
+            "A": "lookup",
+            "B": "Phường/Xã cũ",
+            "C": "Quận/Huyện cũ",
+            "D": "Tỉnh/TP cũ (trước sáp nhập)",
+            "E": "Tỉnh/TP mới",
+            "F": "Phường/Xã mới (từ 1/7/2025)",
+            "G": "Loại đơn vị mới",
+            "H": "Mã phường/xã mới",
+            "I": "Mã phường/xã cũ",
+            "J": "Hình thức sáp nhập",
+            "K": "Diện tích mới (km²)"
+          },
+          "data_rows": 302
+        },
+        "Sheet2": {
+          "header_row": 1,
+          "header": {
+            "I": "Số phường",
+            "J": "Số xã",
+            "K": "Số đặc khu"
+          },
+          "data_rows": 102
+        },
+        "Tinh": {
+          "header_row": 1,
+          "header": {
+            "A": "old_province_name",
+            "B": "new_province_name",
+            "C": "decision_number",
+            "D": "decision_date",
+            "E": "effective_date",
+            "F": "source_document_url",
+            "G": "notes"
+          },
+          "data_rows": 2
+        },
+        "HuongDan": {
+          "header_row": 1,
+          "header": {
+            "A": "HƯỚNG DẪN RÀ SOÁT DỮ LIỆU — ĐỌC TRƯỚC KHI LÀM"
+          },
+          "data_rows": 23
+        }
+      }
+    },
+    {
+      "source_file": "backend/data/ca_mau_data_collection.xlsx",
+      "sha256": "43815c98d1a05dd519826e9586126f23ac7e2b26960c59857d870ee15c6880fc",
+      "sheets": {
+        "Dashboard": {
+          "header_row": 1,
+          "header": {
+            "A": "BẢNG THEO DÕI TIẾN ĐỘ RÀ SOÁT DỮ LIỆU CÀ MAU"
+          },
+          "data_rows": 10
+        },
+        "XaPhuong": {
+          "header_row": 1,
+          "header": {
+            "A": "old_unit_name",
+            "B": "old_unit_type",
+            "C": "old_parent",
+            "D": "new_unit_name",
+            "E": "new_unit_type",
+            "F": "new_parent",
+            "G": "decision_number",
+            "H": "decision_date",
+            "I": "source_document_url",
+            "J": "notes",
+            "K": "merge_type",
+            "L": "review_status"
+          },
+          "data_rows": 186
+        },
+        "Sheet1": {
+          "header_row": 1,
+          "header": {
+            "A": "lookup",
+            "B": "Phường/Xã cũ",
+            "C": "Quận/Huyện cũ",
+            "D": "Tỉnh/TP cũ (trước sáp nhập)",
+            "E": "Tỉnh/TP mới",
+            "F": "Phường/Xã mới (từ 1/7/2025)",
+            "G": "Loại đơn vị mới",
+            "H": "Mã phường/xã mới",
+            "I": "Mã phường/xã cũ",
+            "J": "Hình thức sáp nhập",
+            "K": "Diện tích mới (km²)"
+          },
+          "data_rows": 186
+        },
+        "Sheet2": {
+          "header_row": 1,
+          "header": {
+            "I": "Số phường",
+            "J": "Số xã",
+            "K": "Số đặc khu"
+          },
+          "data_rows": 64
+        },
+        "Tinh": {
+          "header_row": 1,
+          "header": {
+            "A": "old_province_name",
+            "B": "new_province_name",
+            "C": "decision_number",
+            "D": "decision_date",
+            "E": "effective_date",
+            "F": "source_document_url",
+            "G": "notes"
+          },
+          "data_rows": 2
+        },
+        "HuongDan": {
+          "header_row": 1,
+          "header": {
+            "A": "HƯỚNG DẪN RÀ SOÁT DỮ LIỆU — ĐỌC TRƯỚC KHI LÀM"
+          },
+          "data_rows": 23
+        }
+      }
+    }
+  ],
+  "legal_documents": [
+    {
+      "source_file": "backend/data/nghi_quyet_202.txt",
+      "doc_code": "202/2025/QH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": true,
+      "title": "Sắp xếp đơn vị hành chính cấp tỉnh",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "0b03271a6ea43d588300400030fb7b254126d7b03edeb8bc5c669880e9535832",
+      "line_count": 78,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], \"2\": [1, 2, 3], \"3\": [1, 2, 3, 4]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "",
+      "source_urls": "[\"https://thuvienphapluat.vn/van-ban/Bo-may-hanh-chinh/Nghi-quyet-202-2025-QH15-sap-xep-don-vi-hanh-chinh-cap-tinh-649375.aspx\", \"https://vbpl.vn/TW/Pages/vbpq-van-ban-goc.aspx?ItemID=179501\"]"
+    },
+    {
+      "source_file": "backend/data/nghi_quyet_1685.txt",
+      "doc_code": "1685/NQ-UBTVQH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": true,
+      "title": "Sắp xếp đơn vị hành chính cấp xã – TP.HCM",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "0ca6c21c02bcb12520f2496c58e8879db92b6f8313a083cda363a8003b0c7601",
+      "line_count": 218,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164], \"2\": [1, 2, 3], \"3\": [1, 2, 3]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1685-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-thanh-pho-ho-chi-minh-nam-2025-119250616211341304.htm",
+      "source_urls": "[\"https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1685-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-thanh-pho-ho-chi-minh-nam-2025-119250616211341304.htm\"]"
+    },
+    {
+      "source_file": "backend/data/nghi_quyet_1662.txt",
+      "doc_code": "1662/NQ-UBTVQH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": false,
+      "title": "Sắp xếp đơn vị hành chính cấp xã – Đồng Nai",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "6e364b9b2bf86a58322c51bb6cc99714d8decae1a43a49a95936e7363c499daf",
+      "line_count": 242,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89], \"2\": [1, 2, 3], \"3\": [1, 2, 3]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1662-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-dong-nai-nam-2025-119250616200044446.htm",
+      "source_urls": "[\"https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1662-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-dong-nai-nam-2025-119250616200044446.htm\"]"
+    },
+    {
+      "source_file": "backend/data/nghi_quyet_1682.txt",
+      "doc_code": "1682/NQ-UBTVQH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": false,
+      "title": "Sắp xếp đơn vị hành chính cấp xã – Tây Ninh",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "8a38431a3d8f77bd31c23df4c270e9a34cc1faedb2a2e26403c807efa6ad67af",
+      "line_count": 260,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97], \"2\": [1, 2, 3], \"3\": [1, 2, 3]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "https://xaydungchinhsach.chinhphu.vn/toan-van-34-nghi-quyet-cua-ubtvqh-ve-sap-xep-cac-don-vi-hanh-chinh-cap-xa-119250616215143373.htm",
+      "source_urls": "[\"https://xaydungchinhsach.chinhphu.vn/toan-van-34-nghi-quyet-cua-ubtvqh-ve-sap-xep-cac-don-vi-hanh-chinh-cap-xa-119250616215143373.htm\"]"
+    },
+    {
+      "source_file": "backend/data/nghi_quyet_1668.txt",
+      "doc_code": "1668/NQ-UBTVQH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": false,
+      "title": "Sắp xếp đơn vị hành chính cấp xã – Cần Thơ",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "956522f9e63fcd3c58a9a1ea2ff19fcb6383537fc413f37559be648db29176b1",
+      "line_count": 255,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96], \"2\": [1, 2, 3], \"3\": [1, 2, 3]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "https://xaydungchinhsach.chinhphu.vn/sap-xep-dvhc-danh-sach-103-xa-phuong-cua-thanh-pho-can-tho-moi-119250622174653206.htm",
+      "source_urls": "[\"https://xaydungchinhsach.chinhphu.vn/sap-xep-dvhc-danh-sach-103-xa-phuong-cua-thanh-pho-can-tho-moi-119250622174653206.htm\"]"
+    },
+    {
+      "source_file": "backend/data/nghi_quyet_1687.txt",
+      "doc_code": "1687/NQ-UBTVQH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": false,
+      "title": "Sắp xếp đơn vị hành chính cấp xã – Vĩnh Long",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "c12c5b92b12424ddc1bf520542be7e6d77ef4658550faf0833173225d199a8b3",
+      "line_count": 311,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121], \"2\": [1, 2, 3], \"3\": [1, 2, 3]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "https://xaydungchinhsach.chinhphu.vn/toan-van-34-nghi-quyet-cua-ubtvqh-ve-sap-xep-cac-don-vi-hanh-chinh-cap-xa-119250616215143373.htm",
+      "source_urls": "[\"https://xaydungchinhsach.chinhphu.vn/toan-van-34-nghi-quyet-cua-ubtvqh-ve-sap-xep-cac-don-vi-hanh-chinh-cap-xa-119250616215143373.htm\"]"
+    },
+    {
+      "source_file": "backend/data/nghi_quyet_1663.txt",
+      "doc_code": "1663/NQ-UBTVQH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": false,
+      "title": "Sắp xếp đơn vị hành chính cấp xã – Đồng Tháp",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "59bd74dbf064235973388ad1750e571efcfe0e04f19eeb993d4862f1a6d2c24c",
+      "line_count": 267,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103], \"2\": [1, 2, 3], \"3\": [1, 2, 3]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1663-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-dong-thap-nam-2025-119250616203652359.htm",
+      "source_urls": "[\"https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1663-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-dong-thap-nam-2025-119250616203652359.htm\"]"
+    },
+    {
+      "source_file": "backend/data/nghi_quyet_1654.txt",
+      "doc_code": "1654/NQ-UBTVQH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": false,
+      "title": "Sắp xếp đơn vị hành chính cấp xã – An Giang",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "f0c00d44f9d9c2b917ca3dda252fe7518a960cfa587e168c2bc0eeb5fe456992",
+      "line_count": 255,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97], \"2\": [1, 2, 3], \"3\": [1, 2, 3]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1654-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-an-giang-nam-2025-119250616191813652.htm",
+      "source_urls": "[\"https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1654-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-an-giang-nam-2025-119250616191813652.htm\"]"
+    },
+    {
+      "source_file": "backend/data/nghi_quyet_1655.txt",
+      "doc_code": "1655/NQ-UBTVQH15",
+      "source_sheet": "",
+      "source_row": "",
+      "code_in_heading": false,
+      "title": "Sắp xếp đơn vị hành chính cấp xã – Cà Mau",
+      "title_origin": "inventory_label",
+      "encoding": "UTF-8",
+      "sha256": "e2967841cf44f13458401f99c7ef63bc3f6f7f084a45aecc5d6a8246bf458978",
+      "line_count": 190,
+      "article_numbers": "[\"1\", \"2\", \"3\"]",
+      "clause_markers": "{\"1\": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64], \"2\": [1, 2, 3], \"3\": [1, 2, 3]}",
+      "point_marker_count": 0,
+      "context_origin": "legal_original",
+      "source_url": "https://xaydungchinhsach.chinhphu.vn/toan-van-34-nghi-quyet-cua-ubtvqh-ve-sap-xep-cac-don-vi-hanh-chinh-cap-xa-119250616215143373.htm",
+      "source_urls": "[\"https://xaydungchinhsach.chinhphu.vn/toan-van-34-nghi-quyet-cua-ubtvqh-ve-sap-xep-cac-don-vi-hanh-chinh-cap-xa-119250616215143373.htm\"]"
+    }
+  ]
+}

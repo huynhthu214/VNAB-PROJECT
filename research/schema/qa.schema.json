@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VNAB Full QA",
+  "type": "object",
+  "required": [
+    "id",
+    "province",
+    "group_id",
+    "type",
+    "question",
+    "context",
+    "context_origin",
+    "answer_text",
+    "answer_start",
+    "answerable",
+    "gold_entities",
+    "gold_relations",
+    "mapping_ids",
+    "old_unit_ids",
+    "new_unit_ids",
+    "merge_type_raw",
+    "merge_type",
+    "action",
+    "source_doc",
+    "article_clause",
+    "source_url",
+    "provenance",
+    "review_status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "province": {
+      "type": "string",
+      "minLength": 1
+    },
+    "group_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "enum": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T8_ambiguous",
+        "T8_out_of_scope"
+      ]
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context_origin": {
+      "enum": [
+        "legal_original",
+        "mapping"
+      ]
+    },
+    "answer_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "answer_start": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "answerable": {
+      "type": "boolean"
+    },
+    "gold_entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "side"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "side": {
+            "enum": [
+              "old",
+              "new"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "gold_relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "mapping_id",
+          "old_unit_id",
+          "new_unit_id",
+          "merge_type_raw",
+          "merge_type"
+        ],
+        "properties": {
+          "mapping_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "old_unit_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "new_unit_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "merge_type_raw": {
+            "type": "string",
+            "minLength": 1
+          },
+          "merge_type": {
+            "enum": [
+              "toan_bo",
+              "mot_phan",
+              "khong_sap_xep",
+              "chuyen_doi",
+              "unknown"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "mapping_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "old_unit_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "new_unit_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "merge_type_raw": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "merge_type": {
+      "enum": [
+        "toan_bo",
+        "mot_phan",
+        "khong_sap_xep",
+        "chuyen_doi",
+        "unknown",
+        null
+      ]
+    },
+    "action": {
+      "enum": [
+        "answer",
+        "clarify",
+        "abstain"
+      ]
+    },
+    "source_doc": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "article_clause": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "snapshot_sha256",
+        "related_group_ids",
+        "evidence",
+        "mapping_rows"
+      ],
+      "properties": {
+        "snapshot_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "related_group_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "evidence": {
+          "type": "object"
+        },
+        "mapping_rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "mapping_id",
+              "file",
+              "sheet",
+              "row"
+            ],
+            "properties": {
+              "mapping_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sheet": {
+                "type": "string",
+                "minLength": 1
+              },
+              "row": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "review_status": {
+      "enum": [
+        "pending",
+        "verified",
+        "rejected"
+      ]
+    },
+    "review": {
+      "type": "object",
+      "required": [
+        "decision",
+        "reviewer",
+        "reviewed_at",
+        "note",
+        "content_sha256"
+      ],
+      "properties": {
+        "decision": {
+          "enum": [
+            "approve",
+            "reject",
+            "revise"
+          ]
+        },
+        "reviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string"
+        },
+        "content_sha256": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

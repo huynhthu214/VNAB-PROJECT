@@ -1,0 +1,79 @@
+{
+  "component_count": 762,
+  "clean_rows": 2484,
+  "isolated_rows": 3,
+  "min_edges": 1,
+  "median_edges": 3.0,
+  "max_edges": 45,
+  "groups_by_edge_count": {
+    "1": 31,
+    "2": 207,
+    "3": 380,
+    "4": 80,
+    "5": 15,
+    "6": 14,
+    "7": 6,
+    "8": 5,
+    "9": 4,
+    "10": 1,
+    "11": 4,
+    "12": 1,
+    "13": 5,
+    "14": 2,
+    "15": 3,
+    "17": 1,
+    "18": 2,
+    "45": 1
+  },
+  "partial_groups": 49,
+  "historical_signal_groups": 684,
+  "matrix_or_pilot_signal_groups": 620,
+  "eligible_provisional": 64,
+  "proposal_count": 40,
+  "proposal_by_province": {
+    "TP. Hồ Chí Minh": 6,
+    "Thành phố Cần Thơ": 6,
+    "Tỉnh An Giang": 5,
+    "Tỉnh Cà Mau": 4,
+    "Tỉnh Tây Ninh": 4,
+    "Tỉnh Vĩnh Long": 5,
+    "Tỉnh Đồng Nai": 5,
+    "Tỉnh Đồng Tháp": 5
+  },
+  "historical_probe_status": {
+    "multi_group": 1740,
+    "name_signal": 161,
+    "unresolved": 110
+  },
+  "historical_status_by_version": {
+    "batch_unmatched": {
+      "multi_group": 586,
+      "name_signal": 62,
+      "unresolved": 37
+    },
+    "cohere": {
+      "multi_group": 526,
+      "name_signal": 36,
+      "unresolved": 26
+    },
+    "offical": {
+      "multi_group": 521,
+      "name_signal": 42,
+      "unresolved": 25
+    },
+    "pilot_v1": {
+      "multi_group": 25,
+      "name_signal": 5
+    },
+    "pilot_v2": {
+      "multi_group": 41,
+      "name_signal": 8,
+      "unresolved": 11
+    },
+    "pilot_v2_by_province": {
+      "multi_group": 41,
+      "unresolved": 11,
+      "name_signal": 8
+    }
+  }
+}

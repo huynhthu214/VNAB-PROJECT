@@ -1,0 +1,15 @@
+{
+  "supplemental_csv_count": 3,
+  "additional_questions": 1,
+  "relation_signal_rows": 1604,
+  "relation_signals_by_version": {
+    "batch_unmatched": 572,
+    "pilot_v1": 23,
+    "pilot_v2": 40,
+    "pilot_v2_by_province": 40,
+    "cohere": 465,
+    "offical": 464,
+    "supplemental_pilot_csv": 0
+  },
+  "normalized_question_variant_keys": 3
+}
