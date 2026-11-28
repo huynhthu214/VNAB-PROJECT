@@ -1,0 +1,164 @@
+﻿id,split,province,tokens,gold,answer_start,answer_end_exclusive,model_answer_start_nfc,model_answer_end_nfc_exclusive,start_token,end_token_inclusive,token_span_text,boundary_match_nfc_trim
+qa_45c256403c6a74f39e092f2a1f2856af50ba824f74408e5473bf65467c0789be,train,Tỉnh Đồng Nai,80,xã Gia Kiệm,127,138,127,138,74,77, xã Gia Kiệm,True
+qa_eccb8278ee09a53a35197c425d1f22f436bbb48ed9ed756c9bd70e89173ea895,train,Tỉnh Đồng Nai,87,phường Bình Long,160,176,160,176,82,84, phường Bình Long,True
+qa_17edf8d0c74c99619be113ab25b41337e6d201249143112bd66bda76f942eee6,train,Tỉnh Tây Ninh,89,xã Nhơn Hòa Lập,148,163,144,159,81,86, xã Nhơn Hòa Lập,True
+qa_6818af95a4914c2f4eaf5bb1a7f2fbf271fa9142be4ad3b25eb65952b682f84e,train,Thành phố Cần Thơ,81,phường Vĩnh Châu,141,157,141,157,76,78, phường Vĩnh Châu,True
+qa_e20702f646a572f5bb7dcead1d175b816e414d28196886718b3363df5eb08341,train,TP. Hồ Chí Minh,83,phường Phú Mỹ,141,154,141,154,78,80, phường Phú Mỹ,True
+qa_fe75877a32b3d035c282d868963630c4f12d67fb4572936a9d335d0d218f1150,train,Tỉnh Đồng Tháp,83,xã Bình Thành,133,146,133,146,78,80, xã Bình Thành,True
+qa_e15cfe58704bc138e86ab606f457fd52db09a00b308989b301553ede84d2d328,train,Tỉnh Cà Mau,79,xã Tân Lộc,133,145,129,139,74,76, xã Tân Lộc,True
+qa_3edb7b77d8ee437d79d4a99be0d693ae349283942d5c9b8b28f7519b7d39438c,train,Thành phố Cần Thơ,88,xã Nhơn Ái,113,123,113,123,80,85, xã Nhơn Ái,True
+qa_5634236c477984a031b5f0bba1661b88e12bfdd8e77882110f35be793f552d85,train,Tỉnh Đồng Tháp,86,xã Hòa Long,144,155,144,155,81,83, xã Hòa Long,True
+qa_e486eabf7672d7e7819e46ccf7907e76cd7304a0230bcf1fcd8f27ba442d48b8,train,TP. Hồ Chí Minh,79,phường Chợ Lớn,143,157,143,157,71,76, phường Chợ Lớn,True
+qa_1a9c2e40bc06e602cfe0436acff39ded15be262b7d2e095bc6d1b4c35634d79d,train,Tỉnh Cà Mau,76,xã Tân Tiến,118,131,114,125,71,73, xã Tân Tiến,True
+qa_4359ec200d99d3e331478ae2a8fb03689526dadf1105db88d529f1d14372d067,train,Tỉnh Đồng Tháp,77,xã An Long,122,132,122,132,72,74, xã An Long,True
+qa_8cf0b731208355694399c31dd791f4177af0db63128e1a8c3b2ef11943233dbf,train,Tỉnh Vĩnh Long,81,xã Phú Phụng,125,137,125,137,75,78, xã Phú Phụng,True
+qa_6aac464b0856d4ed80bb72cc70071490f9847fa2bf007768fcef8a84ce91c4f0,train,Tỉnh An Giang,77,xã Phú An,120,129,120,129,72,74, xã Phú An,True
+qa_f6ffb944f73ca5eee6ce56cf4e339727c638510df56bd787a64f7eba73fc738e,train,Tỉnh An Giang,83,xã Thạnh Đông,130,143,130,143,77,80, xã Thạnh Đông,True
+qa_1a335f82bbd0bf5e127c1e47ff0aaf5d0dd73efdf46e9c1c09c0d0d58c89ab2b,train,Tỉnh Tây Ninh,85,xã Thạnh Phước,134,148,134,148,79,82, xã Thạnh Phước,True
+qa_dbe25e92a98367e37050be5941236d90f4742042a025305bf297f593fa3714b5,train,Tỉnh Cà Mau,108,xã Nguyễn Phích,254,272,250,265,102,105, xã Nguyễn Phích,True
+qa_6d29207b1ae2563308921bbd590c20fe439f119139928cda7663165e038703fa,train,Tỉnh Đồng Nai,80,xã Nam Cát Tiên,114,129,114,129,73,77, xã Nam Cát Tiên,True
+qa_a013979dfefe6abc767e2d5bf2299ff6c3493cc5deb6b1928a205c8dc9cd0067,train,Tỉnh Vĩnh Long,101,xã Mỏ Cày,165,174,162,171,94,98, xã Mỏ Cày,True
+qa_cd96210500c32ed7836051ae07e2ddf5e701a64f41c211366addda8b4bfe02d2,train,TP. Hồ Chí Minh,80,phường Tân Phước,127,143,127,143,75,77, phường Tân Phước,True
+qa_428b340ee0417de3c74710c3fda5761fdafab7cacaee7a9b0a3d11567c00e7da,train,Tỉnh Đồng Nai,74,xã Thuận Lợi,114,126,114,126,69,71, xã Thuận Lợi,True
+qa_1c8c0db70bd50a56d676a6c115e5d715272a6325352939d4178515c7335436bd,train,TP. Hồ Chí Minh,78,xã An Long,122,132,122,132,73,75, xã An Long,True
+qa_911c94e71e26a18faf84533c7611b49afad0b86bd0110aacb17e63ce3bdafff9,train,Tỉnh Đồng Nai,93,xã Tân Khai,147,158,147,158,87,90, xã Tân Khai,True
+qa_aacb6ff2f09eb6fc9da2bc3d2dfaf60c1c837b5be4ddf51c9cf09354e35e9d6e,train,Thành phố Cần Thơ,79,xã Trường Long Tây,124,142,124,142,73,76, xã Trường Long Tây,True
+qa_9f4b0e895ce644c12e0c450a36bf67d4702028edc88bc676de9b2ed09f337950,train,Tỉnh An Giang,77,phường Tô Châu,134,148,134,148,72,74, phường Tô Châu,True
+qa_d60b1425bff19b61413149ed69e66709a0cb1f32b374d570158313bda37040a1,train,Thành phố Cần Thơ,98,xã An Thạnh,156,167,156,167,92,95, xã An Thạnh,True
+qa_7bada37b35d670b05e8b806d6ebea6ca474176613a019a027caa464e90d073d9,train,Tỉnh Cà Mau,78,xã Vĩnh Lợi,125,139,122,133,73,75, xã Vĩnh Lợi,True
+qa_345e266c9685b97488b5a9054eee9d9889255ea86427bbb1bfc8ce4101cb39ea,train,Tỉnh An Giang,79,xã Núi Cấm,109,119,109,119,71,76, xã Núi Cấm,True
+qa_7e07447f8a2858fbcad2922d43663cd3942d7b25532dfe29be4aa778a9db4506,train,Tỉnh Cà Mau,79,xã Trần Phán,117,132,113,125,73,76, xã Trần Phán,True
+qa_70d4fd911d928ef173ded00fb545e3a748f304ed61b2885763a0ae64c60cde6d,train,Tỉnh Đồng Tháp,77,xã Thanh Mỹ,112,123,112,123,72,74, xã Thanh Mỹ,True
+qa_047ac4634ebdfdb2a2e869773301869c98f949fb6fb13b243f134e9b3fd5ab67,train,Tỉnh Đồng Tháp,80,xã Tân Điền,111,122,111,122,74,77, xã Tân Điền,True
+qa_6988d160596d3f28e474600fdfc1fab342b66acd4f5343a9ed015a0f13dfd2b9,train,Tỉnh An Giang,79,xã Hòa Điền,113,124,113,124,73,76, xã Hòa Điền,True
+qa_641142f34ba37ab92ad4bb9286740c00836dc5fd51a32e7043da992839bf4678,train,Thành phố Cần Thơ,80,xã Trường Thành,128,143,128,143,75,77, xã Trường Thành,True
+qa_119be7fbcad6fe978fb174aee3f32306de3f59e6fa7d61459acaf38f12e10215,train,Tỉnh Cà Mau,89,phường An Xuyên,176,192,170,185,83,86, phường An Xuyên,True
+qa_2ba6296e844a040f973bd7e27c8faf5fa14968b58a1788083eda6e26dea480a3,train,Tỉnh Đồng Nai,86,phường Long Hưng,159,175,159,175,81,83, phường Long Hưng,True
+qa_33b757c089a0946690e43ab48cf6122ca2fd55b7e0c87e7a232cd8880af5044b,train,Tỉnh Vĩnh Long,79,xã Thạnh Hải,112,124,112,124,73,76, xã Thạnh Hải,True
+qa_a48420b23de2d1cb5cda92fee7559fd8cd470a411690a0632557a459b567e415,train,Tỉnh Đồng Nai,82,xã Bù Đăng,133,143,133,143,76,79, xã Bù Đăng,True
+qa_040511a27bc350c00dd4b3d2296ff1e31b65d37567fdb9bc3de2decec50351bb,train,Tỉnh Vĩnh Long,82,xã Mỹ Long,140,151,136,146,77,79, xã Mỹ Long,True
+qa_1394bd79e964df8820876174043c9b21e4d9055369d727272d4ceaa67afb8b55,train,Tỉnh Vĩnh Long,77,xã Hòa Bình,126,137,124,135,72,74, xã Hòa Bình,True
+qa_0588390a03774d1888bb0faebf4e04900b7bc1ea0ba3d0b869e7e8a132e48179,train,Tỉnh Cà Mau,114,phường Tân Thành,267,285,263,279,109,111, phường Tân Thành,True
+qa_9f0cf586867331d75b1e40c509f3331376503b56b56beadae1e8dac889f4abd1,train,Tỉnh Đồng Nai,76,xã Xuân Thành,114,127,114,127,71,73, xã Xuân Thành,True
+qa_74397ec5aab2197551ab9e1b73d721f1fc7e844d90c1bd22b6c0f23f0c0beb33,train,Thành phố Cần Thơ,73,phường Vị Tân,122,135,122,135,68,70, phường Vị Tân,True
+qa_2097d04cd5fb39e12ea575c69e67ed83239223b881df64d7d47fdee23d86b87c,train,Tỉnh Đồng Nai,76,xã Phú Vinh,111,122,111,122,71,73, xã Phú Vinh,True
+qa_4218826a8bb0f36922b67b091be021d28c329457d7ce4eb471aadf26369d71fe,train,Tỉnh Đồng Nai,88,phường Bình Phước,165,182,165,182,83,85, phường Bình Phước,True
+qa_e3c57bcb30bed2a2bb70d167b6ea2b8821a574091d18af4dc06cc67a8826a970,train,Tỉnh Đồng Tháp,82,phường Mỹ Phong,149,164,149,164,77,79, phường Mỹ Phong,True
+qa_7c7ba9733f86e1d660deabb1d80f74c2edc795a21bd5d4cbfd02a859ce0a31de,train,Tỉnh Tây Ninh,74,xã Phước Chỉ,115,127,115,127,69,71, xã Phước Chỉ,True
+qa_e7e0424cd0eeb3619800409aec52ce5261eef5cc197c056bb299b40329e66af1,train,Tỉnh Tây Ninh,83,xã Cần Giuộc,133,145,133,145,77,80, xã Cần Giuộc,True
+qa_e31d2b2c4a548d293e03342221a0586bd58c45585f9fe15f3d408feb0196629e,train,Tỉnh Đồng Nai,85,xã Thiện Hưng,136,149,136,149,79,82, xã Thiện Hưng,True
+qa_e64d53fcbaa64a2d734eafbcca12db33eeda1321a26abe4beb77267fe155f3e6,train,TP. Hồ Chí Minh,91,xã Nhà Bè,144,153,144,153,85,88, xã Nhà Bè,True
+qa_911c1364cc718f1f9e5059bc7b2a704f03d0d23d2370487b83b967031134df16,train,Tỉnh Tây Ninh,76,xã Hưng Thuận,115,128,115,128,71,73, xã Hưng Thuận,True
+qa_09f5375f124f56889666b296044b2ed2cb48269fee6e1a2770cf0a905f9cb77b,train,Thành phố Cần Thơ,87,phường Mỹ Quới,141,155,141,155,81,84, phường Mỹ Quới,True
+qa_0259a750ec00f481b965da44e62369e4f9b9fcfde255be9802e7c29409f0ac6f,train,Tỉnh Tây Ninh,79,xã Tân Lập,131,141,129,139,74,76, xã Tân Lập,True
+qa_22dfc590b8cba89b048ca1b0247c2cce0d247349984a890d2394a347566b1c3e,train,Thành phố Cần Thơ,81,phường Mỹ Xuyên,132,147,132,147,75,78, phường Mỹ Xuyên,True
+qa_b8b561bcd7522499510f041c56814c36a7044b129bd7e6e0d90e564290b43dc5,train,TP. Hồ Chí Minh,86,phường Tân Thành,122,138,122,138,81,83, phường Tân Thành,True
+qa_447525173353a180edd57c6996029b9e0d0c8dc10f7b6a29095802f0ed6584fb,train,TP. Hồ Chí Minh,76,phường Hòa Bình,121,136,121,136,71,73, phường Hòa Bình,True
+qa_eb7e2ca3e61832a4713f2db0471a86f9eb5f387dd9fe1710835d78fdbdfe5e29,train,TP. Hồ Chí Minh,75,phường Tân Hiệp,127,142,127,142,70,72, phường Tân Hiệp,True
+qa_afadfc20a7b35f577fec3faa013913026b744e8dec232dbef9896e8c22df3d1e,train,Tỉnh Đồng Tháp,90,xã Chợ Gạo,137,147,137,147,83,87, xã Chợ Gạo,True
+qa_1fc99dcd790bc924fd9d1f9e1781cef6b75a9e4f1f76e0a07edef1c46222c48e,train,TP. Hồ Chí Minh,78,phường Đông Hòa,132,147,132,147,73,75, phường Đông Hòa,True
+qa_f2275bf54d497a89009966dfada511d8e1b500a04964b72b4eeb903a00f76368,train,Tỉnh Cà Mau,78,xã Tam Giang,134,147,131,143,73,75, xã Tam Giang,True
+qa_72eafd35f0f947ea93a6309b52b716fb80be3a5bdd9eb8f6df7052d77b5d660c,train,Tỉnh Cà Mau,75,xã Vĩnh Thanh,117,132,114,127,70,72, xã Vĩnh Thanh,True
+qa_95bc4e2f35868b4e5195b778ebc81ca4dfe78d7b7a1aa6d63b4f8da496b9f74f,train,Tỉnh Tây Ninh,81,xã An Lục Long,132,146,132,146,75,78, xã An Lục Long,True
+qa_ff8e9d2a40692eb96f104b8a6cd8f1b9fb7cc912e3053819f87ef49bc2830e7d,train,Tỉnh An Giang,77,xã Vĩnh Hậu,133,144,133,144,72,74, xã Vĩnh Hậu,True
+qa_87f5fdd0d94889093a34be22e398f9d6fb9c12fbcedc86a4cdb677b01425471c,train,TP. Hồ Chí Minh,79,phường Minh Phụng,131,148,131,148,73,76, phường Minh Phụng,True
+qa_6c8e2268acdee1f4684d417ba4791c9e625b5e11d75e87a7aee9a9f1b655b315,train,Tỉnh Cà Mau,75,xã Hưng Hội,117,130,114,125,70,72, xã Hưng Hội,True
+qa_c5d58cfeac76aee9b476489eb135cb37a36442f47fe8a74703a3d5cc1c0acd04,train,Thành phố Cần Thơ,76,xã Tài Văn,110,120,110,120,71,73, xã Tài Văn,True
+qa_580be95eeafc3d63f4969be228cea11c9631a14c2389885dae139d91587341ce,train,Tỉnh Đồng Tháp,89,xã Mỹ Tịnh An,142,155,142,155,82,86, xã Mỹ Tịnh An,True
+qa_fd2ed8a430b28c5d0bacb3b5ab5b538bdba622843fd4577f4698676ac6e55957,train,Thành phố Cần Thơ,79,phường Long Bình,142,158,142,158,74,76, phường Long Bình,True
+qa_ca674205b0f22b77be55e316bff464b3ba6459e8edf01d068c19d74eb880b678,train,Tỉnh Đồng Tháp,78,phường Sơn Qui,136,150,136,150,73,75, phường Sơn Qui,True
+qa_2ed7649c6bd0ab324f0c8074b5aea6e68c991d6199c46b6b3a86eff8add911d9,train,Tỉnh Vĩnh Long,86,xã Càng Long,138,151,134,146,80,83, xã Càng Long,True
+qa_a4e26bbb4ffad6ea0bb99edb0e73c777c796ab0aa81739a3cb7b797b6257cfd2,train,Tỉnh Vĩnh Long,76,xã Lưu Nghiệp Anh,123,141,119,136,70,73, xã Lưu Nghiệp Anh,True
+qa_0a0427f0d6c218e947642dd396499730648bd1c2006e2b37e09aa99eaa911e9f,train,TP. Hồ Chí Minh,81,phường Nhiêu Lộc,141,157,141,157,75,78, phường Nhiêu Lộc,True
+qa_25f4b7e5b6326591510bff8b0db9353a2016732df03ff2f04a02c4f1c4ffafa5,train,Tỉnh Vĩnh Long,80,xã Đồng Khởi,128,140,128,140,75,77, xã Đồng Khởi,True
+qa_7dcbf29a4c175a7bda6945f4e722b7a930ebd1a7d16d94f18990579d500e3bca,train,TP. Hồ Chí Minh,84,phường Hạnh Thông,124,141,124,141,79,81, phường Hạnh Thông,True
+qa_80a06197702753d528380ac059eb34c02aadd5cd37ea102ab382f307dc6d66fc,train,Tỉnh Tây Ninh,76,phường An Tịnh,123,137,123,137,70,73, phường An Tịnh,True
+qa_7c87d5ee44b055b797778f3f386ddc62baa5fc41a3ced697fb470f2717857e2d,train,Tỉnh Đồng Tháp,81,xã Tân Hộ Cơ,115,127,115,127,74,78, xã Tân Hộ Cơ,True
+qa_d6a4c8dceab8302127bc7e48ec4157c4378ee0d03353b5c59c1564092dda11e6,train,Thành phố Cần Thơ,74,phường Vĩnh Phước,122,139,122,139,69,71, phường Vĩnh Phước,True
+qa_617b0e8e6ca42d8f0e16f92e76f85fe642967ebafc1d841f3131aaf85750fd3b,train,Tỉnh Đồng Nai,74,xã Xuân Phú,113,124,113,124,69,71, xã Xuân Phú,True
+qa_a5cc3c72ee51b940948dafaa7f5b14f4f618d9c1a762a1285f162b7033f46456,train,TP. Hồ Chí Minh,79,phường Chánh Phú Hòa,125,145,125,145,73,76, phường Chánh Phú Hòa,True
+qa_921ee3ec42a78b16a8056021747d7f430d547608810fe4c5bc3e561254f74a56,train,Tỉnh An Giang,78,xã U Minh Thượng,117,133,117,133,72,75, xã U Minh Thượng,True
+qa_277e0002bbe9c9893581f4340e71e657e7675718f44587c46e40c10f03768af1,train,Tỉnh Đồng Tháp,79,xã Long Định,124,136,124,136,74,76, xã Long Định,True
+qa_dacce54b5746570819a1b980654d30b1376f15b98b30763dceace26d8d8cba76,train,Tỉnh An Giang,94,xã Hòn Đất,146,156,146,156,87,91, xã Hòn Đất,True
+qa_77f74de0be2120ceed43d301370f400c7d83da75350e0f3ca6cf6a2defc96cc0,train,Tỉnh Đồng Nai,81,xã Lộc Tấn,112,122,112,122,74,78, xã Lộc Tấn,True
+qa_4b08024006dc062d7a101fdd91b00bfee8bb3de833cfaa202c6110e897bb0a23,train,Tỉnh Tây Ninh,92,xã Bến Cầu,163,173,160,170,86,89, xã Bến Cầu,True
+qa_0f13cb4b1ec0f430d683f8909a09a0865cc9b5f149cfe0cbac01200232c467bb,train,Tỉnh Vĩnh Long,81,xã Bình Đại,134,145,134,145,76,78, xã Bình Đại,True
+qa_c5ffbe87dde2f9ad0026ac67cd948a65a25ae3fc994624250aed3e9ca0a66027,train,Tỉnh Tây Ninh,92,xã Thạnh Bình,184,197,184,197,86,89, xã Thạnh Bình,True
+qa_dba55f2780afee02050d54ddbe0390c5db512f596169091e0d3f69d78860b565,train,Tỉnh Cà Mau,80,xã An Trạch,117,130,114,125,74,77, xã An Trạch,True
+qa_844007bf32f16f3067a078913b310075371a969dc52d7b780cf559e22748332f,train,Tỉnh Đồng Tháp,91,phường Hồng Ngự,155,170,155,170,85,88, phường Hồng Ngự,True
+qa_26324605584d2f44012430ce5ba056d2f6ee73e65f2b470327c374a751b432d3,train,Tỉnh Đồng Nai,90,xã Tân Quan,156,167,156,167,85,87, xã Tân Quan,True
+qa_1316680f22d3801107d1e06fea5b268b285a7b27f93c213b5c50296b2baa3a25,train,Tỉnh Tây Ninh,76,phường Thanh Điền,122,139,122,139,70,73, phường Thanh Điền,True
+qa_afbf4c66c6e93ddba9a81de0aa036dad2c13fd18ec329c90dbcc9ad61351a9ed,train,Tỉnh Đồng Tháp,76,xã Bình Trưng,113,126,113,126,71,73, xã Bình Trưng,True
+qa_9a79be7f0377c0c240a8677c5e59d5606c79df68e5c71aa1697f72f79dcab00c,train,Tỉnh Tây Ninh,78,xã Tân Đông,129,140,127,138,73,75, xã Tân Đông,True
+qa_2326a75d7b8c516dc6e7b769e7f199e518480303abf02ef8471a6eda4ad2d70f,train,TP. Hồ Chí Minh,83,xã Cần Giờ,133,143,133,143,78,80, xã Cần Giờ,True
+qa_be9858898976211f01b5e8e61167c676352cf83c9322f714ff5cfd0d0f3bf075,train,TP. Hồ Chí Minh,77,phường Phú Lâm,132,146,132,146,72,74, phường Phú Lâm,True
+qa_39dd474a4c5cf4ea7a18897086a34678c8f3cedb383030322177316dfe3fe85e,train,Tỉnh Tây Ninh,76,xã Lương Hòa,113,126,112,124,71,73, xã Lương Hòa,True
+qa_14ee6830c3a556e97e7b660a8ebda5cc2fa67f166fd0d09c0677b065e4ece975,train,Tỉnh Vĩnh Long,76,xã Long Hiệp,129,142,125,137,71,73, xã Long Hiệp,True
+qa_5fffb7a2c21d43a9c3a5f9bec75650ffe148a812746d438e06bc9a1d81839541,train,Tỉnh Tây Ninh,85,xã Nhơn Ninh,145,157,143,155,78,82, xã Nhơn Ninh,True
+qa_cd108a8e3e0f5e4bc45cadce7b00a7b3cff20f8b07d424c28e62cf6b8ac8bea6,train,TP. Hồ Chí Minh,93,xã Xuân Thới Sơn,139,155,139,155,86,90, xã Xuân Thới Sơn,True
+qa_2219a0cdd60f6d5d387943e0240c073d5c66728f8d5177498466d952a1a38476,train,Tỉnh Tây Ninh,78,xã Tân Hội,129,139,128,138,73,75, xã Tân Hội,True
+qa_e86bf92cf73e108d4edb4417b8883cb3fe01a84749e9f311a134a8386837de94,train,Tỉnh Đồng Tháp,83,xã Mỹ Hiệp,142,152,142,152,78,80, xã Mỹ Hiệp,True
+qa_d156fdf2380ca3359b1bf9a724bd43669555235f0ced924d1e780fb0e86b80d7,train,Tỉnh Vĩnh Long,77,phường Thanh Đức,139,156,137,153,72,74, phường Thanh Đức,True
+qa_e1cf78df831788a6dd79c2ab6cfc05466f26ac5d3bc00dba6ab0912192785529,train,Tỉnh An Giang,77,xã An Cư,122,130,122,130,71,74, xã An Cư,True
+qa_68378525e1423def849ae11a1bb74df3ed0ab80c8f7ca1463fb505aedb12d61f,train,Thành phố Cần Thơ,79,xã Hiệp Hưng,120,132,120,132,74,76, xã Hiệp Hưng,True
+qa_d546db3a7bc33e671c6f26086fdefb8263f4a602209844fc489f2cfcb9dedb04,train,Tỉnh Đồng Tháp,79,xã An Phước,129,140,129,140,74,76, xã An Phước,True
+qa_aebc2be2b3632d009e5a22229df88d99d850b81478b12857ef0ecb174bb18662,train,Tỉnh Cà Mau,84,phường Hiệp Thành,144,164,141,158,79,81, phường Hiệp Thành,True
+qa_0b38142f9140a32b922e7badfd02190a5d38487cc9748cf7dcae42aec862c3ef,train,Tỉnh Vĩnh Long,79,phường Trà Vinh,145,162,142,157,74,76, phường Trà Vinh,True
+qa_0612ef8e3e4e9b81ce039c127541b1b48050ac15e016ebf22d8a89e5d3bd42f5,train,Tỉnh Tây Ninh,79,xã Hưng Điền,125,137,125,137,73,76, xã Hưng Điền,True
+qa_e35a3c61302dec690e27b07ef421062799a443ccd75f96d0e53917db37fd8816,train,Tỉnh Tây Ninh,98,phường Ninh Thạnh,202,219,202,219,92,95, phường Ninh Thạnh,True
+qa_cc2941e400972a3592b23b828b813a2166db9c71c23b06aca5295091b24003a4,train,TP. Hồ Chí Minh,81,phường Phước Long,141,158,141,158,76,78, phường Phước Long,True
+qa_083439a07d714ba6d9f3a0c098a0aafeaa851a6c771ea55f31b3e566bf4cc23c,train,Tỉnh Cà Mau,77,xã Tân Ân,123,133,119,128,71,74, xã Tân Ân,True
+qa_3f15d9b4bebd5f201aec6f2210e5eb865475014e585acc51e588bac3f24e19fb,train,Tỉnh Vĩnh Long,97,xã Chợ Lách,153,164,150,161,90,94, xã Chợ Lách,True
+qa_e3ab2f32867cca83dd6726e0062ba42914092ff83621840e6c477f48f9d2a13a,train,Tỉnh Tây Ninh,91,phường Gò Dầu,140,153,140,153,83,88, phường Gò Dầu,True
+qa_e60a7b846b8a06a6105e305335b175264d198f7a66171a52d7bc208918bda94a,train,Tỉnh Đồng Tháp,99,xã Phú Cường,191,203,191,203,93,96, xã Phú Cường,True
+qa_b6b19ddf60a41bd371bf884865c52f3b0a3cd5461c40c0d30dfd27c91ae7de39,train,TP. Hồ Chí Minh,80,phường Thuận An,136,151,136,151,75,77, phường Thuận An,True
+qa_309bd2154ef884d1ef5d73145ec64a9cd6cce20f737249286ef2160c7fc9fe45,train,Thành phố Cần Thơ,83,phường Cái Răng,144,159,144,159,77,80, phường Cái Răng,True
+qa_1677a7c7eedbcce36081d0995100c164e759d6d39d4f28631518dd8a48da529c,train,Tỉnh Đồng Nai,91,xã Trảng Bom,148,160,148,160,85,88, xã Trảng Bom,True
+qa_6224c8dcefb4e4758957b0a6a213f488dc1a7084207a99d97930f9b2e9a65e06,train,Tỉnh Vĩnh Long,80,xã An Qui,120,129,120,129,75,77, xã An Qui,True
+qa_52a2e027c694cec71009ff35625a89bd2137df82ac4502ee2038739b04e66f08,train,Thành phố Cần Thơ,83,xã Thới An Hội,117,131,117,131,76,80, xã Thới An Hội,True
+qa_9296ea597ff2aae38a95a43f17eb7cabb9e6aabbd42b0a1e3c566e79bf5a52e6,train,Tỉnh Cà Mau,90,phường Giá Rai,171,187,168,182,85,87, phường Giá Rai,True
+qa_6ae07ef969dc60841c6c46a3ffc595a86d96e9ed66a252b3288210a4dd6ae234,train,Tỉnh An Giang,75,xã Đông Hòa,114,125,114,125,70,72, xã Đông Hòa,True
+qa_30befc88bf9c41c878d50aceced99fbb3280277f845a46e89f93d26100a317bc,train,Tỉnh An Giang,77,phường Mỹ Thới,123,137,123,137,71,74, phường Mỹ Thới,True
+qa_282bede781048377d6a04057ffd8cc22bfb6efdb7d50c31092a9cd611959edd2,train,Tỉnh An Giang,79,xã Giang Thành,125,139,125,139,74,76, xã Giang Thành,True
+qa_db9e45bd0f62037fd530b5ec9ddd89591d229280c9481d8c29686824d30a7710,train,Tỉnh Cà Mau,77,xã Vĩnh Phước,121,137,118,131,72,74, xã Vĩnh Phước,True
+qa_739f9dec4f732d1cdaf7a467b5f2c55a7b1512b8e05f3edc209609c35de46db5,train,Tỉnh Tây Ninh,78,xã Long Chữ,126,137,126,137,72,75, xã Long Chữ,True
+qa_607fe12e7ecadfb96e6c32013638da3bee5a4256c42775190e582e780c769fda,train,Tỉnh An Giang,72,xã Mỹ Đức,111,120,111,120,67,69, xã Mỹ Đức,True
+qa_f2fa99bf6679f25c21aa47b97d2edeee5fe061783f9b1953fac8aab7e0a85874,train,Tỉnh Đồng Nai,83,phường Đồng Xoài,145,161,145,161,77,80, phường Đồng Xoài,True
+qa_0817ea37cfef815d891eff633d63b1da5a4116ad9b9f3d95e5a25703c6357351,train,Thành phố Cần Thơ,84,xã Đại Ngãi,118,129,118,129,77,81, xã Đại Ngãi,True
+qa_b748cd4397a35f50e303b55b73fbb762cb8a983b3afff792b8f418161048c2c8,dev,Tỉnh Tây Ninh,105,phường Tân Ninh,254,269,253,268,100,102, phường Tân Ninh,True
+qa_aff9f94959ed662598924e7292fd98d2cf767173851f512b17c330eaa7fa5aff,dev,Tỉnh Cà Mau,86,xã Vĩnh Mỹ,129,142,126,136,81,83, xã Vĩnh Mỹ,True
+qa_f4684af448eb01c641cd5fd10d418cb71eb98269eff7e8f305a1a8e017e999c0,dev,Tỉnh Vĩnh Long,82,xã Tân Thủy,133,144,133,144,77,79, xã Tân Thủy,True
+qa_bb58ddd256e2d41c04a91bd8983deca1925ad476cd539da05b313dcdcfe84ce7,dev,Tỉnh Vĩnh Long,85,xã Mỹ Chánh Hòa,141,156,137,152,79,82, xã Mỹ Chánh Hòa,True
+qa_59d267be51a23887355e8d7be81dace022688cfc4de719f2bf025e8f971dc13c,dev,Thành phố Cần Thơ,81,xã Trường Khánh,127,142,127,142,76,78, xã Trường Khánh,True
+qa_24ed52a7daebfccb55c9961e5a9906b2a28c07b0890704a74dca1d04a968b50a,dev,Tỉnh Vĩnh Long,90,xã An Ngãi Trung,148,164,147,163,82,87, xã An Ngãi Trung,True
+qa_f65ee492d549dbf9b099ef2a8acb4c09bc76896a79efc8a22f2c1f76807c8f82,dev,Tỉnh Đồng Nai,86,xã Thọ Sơn,137,147,137,147,80,83, xã Thọ Sơn,True
+qa_7c3f5f6f4be2bd7d4303c75ebf1817fd9ef6ece1e779f7b736afbe67c4e2c79b,dev,Tỉnh Đồng Tháp,88,xã Tân Thới,146,157,146,157,82,85, xã Tân Thới,True
+qa_99e0911d255ac614f25db86569067dec9bc9e9f28c5b5f5d7f11fe4ccc3f0bf6,dev,Tỉnh An Giang,83,xã Vĩnh Hòa Hưng,130,146,130,146,77,80, xã Vĩnh Hòa Hưng,True
+qa_021ba642a8c2050c8ffb68e839d144cb2dadd42fbd9e310e1d0d96065c9f16f7,dev,Tỉnh Đồng Nai,80,phường Tam Hiệp,139,154,139,154,75,77, phường Tam Hiệp,True
+qa_9257a7b03c9de8a50965f7571d8960d253e630be1d2a93d60740707ec76a0f11,dev,Tỉnh Đồng Tháp,75,xã Tân Thành,116,128,116,128,70,72, xã Tân Thành,True
+qa_ea946b1583cfa519eab04ef1152d4ac2b5ddfc3adcddd66d4e36a36fb8caacd7,dev,Thành phố Cần Thơ,86,xã Thạnh Quới,127,140,127,140,79,83, xã Thạnh Quới,True
+qa_0dbcab71b49f567fa002d9c70cbf5aa4069d8293c9611d2f5f645d447af6bc06,dev,Tỉnh An Giang,85,xã Chợ Vàm,132,142,132,142,78,82, xã Chợ Vàm,True
+qa_59c87d3daf80ea70c3e34e28ca50d81849cb144feca7ceb9a848fd458d7abf98,dev,Tỉnh An Giang,87,phường Long Xuyên,155,172,155,172,81,84, phường Long Xuyên,True
+qa_a0f01ba89443cd580bad3b252ba0698338d20be238d7a7ca3e4ddcf456711295,dev,Tỉnh Vĩnh Long,80,xã Quới Thiện,116,130,115,128,73,77, xã Quới Thiện,True
+qa_cdfbb16a4e5645295253951dc1877ed3e92e4ad07b2d1d435c3044045051ce90,dev,Tỉnh Cà Mau,118,xã Đầm Dơi,219,231,214,224,109,115, xã Đầm Dơi,True
+qa_18c5f26a8f230b1ed0e29a573c161b73066d7ca351a3a81ed654d3336745036e,dev,Tỉnh Đồng Nai,74,xã Bình An,110,120,110,120,69,71, xã Bình An,True
+qa_d763124461442de6ea3a92e9f8283f7f21e5f1286b2f9430617472247b001d84,dev,Tỉnh Đồng Nai,83,xã Long Hà,129,139,129,139,78,80, xã Long Hà,True
+qa_1dd1e466d3d468ae9c2d9a1241e8c8b77e1da3632411a3586d21b15f8ac6d113,dev,Tỉnh Cà Mau,79,xã Thới Bình,123,138,120,132,73,76, xã Thới Bình,True
+qa_f4669f52f031d501c69d8ddce820d053dbfbd9bac0dbae6e60c0ea6e7eabea16,dev,Tỉnh Cà Mau,82,xã Đông Hải,129,142,126,137,77,79, xã Đông Hải,True
+qa_3cb508fa7ba0b9b5ba0638dd8accb54175ff2ea674b16daa08c1f46e7a646f84,dev,Thành phố Cần Thơ,76,xã An Ninh,110,120,110,120,71,73, xã An Ninh,True
+qa_1cb7ccdb60388bbfdfa0adb61fda3451402b4d403bb736dccac049ed321dcc72,dev,Tỉnh An Giang,79,xã Tri Tôn,129,139,129,139,74,76, xã Tri Tôn,True
+qa_86f8807d0a71c18570bbe8045da73e06314ee9f8937cf26df9ef6c3543401fa2,dev,Tỉnh Tây Ninh,82,xã Đức Hòa,134,144,133,143,77,79, xã Đức Hòa,True
+qa_956fe517757732e610bd349c995161fcdc6953575c8ac3057dd9b4967d395ef7,dev,Tỉnh Vĩnh Long,78,xã Nhị Long,126,139,122,133,72,75, xã Nhị Long,True
+qa_7dcf7353e781241e44514c0e3b0aca54ed55a769ce0d269e944a59b3022db3ed,dev,Tỉnh Vĩnh Long,82,xã Trà Cú,136,147,132,141,77,79, xã Trà Cú,True
+qa_9724072a1ed1660fa0bc7086e1b140f5c39cbc6bd62bd2b6ddacbb4c553aabbb,dev,Tỉnh Cà Mau,85,xã Gành Hào,126,140,123,134,78,82, xã Gành Hào,True
+qa_8da6d0d04dc3b24e556f941a0df52c903a7811a8e7ac81acdb94fcd3d98f0eae,dev,Thành phố Cần Thơ,91,xã Cờ Đỏ,130,138,130,138,84,88, xã Cờ Đỏ,True
+qa_57c316c357f7aa84397e0f5a92495a0544d5cc497f284463fb2a61ef8377ad9e,dev,Tỉnh Đồng Nai,79,xã Xuân Bắc,112,123,112,123,74,76, xã Xuân Bắc,True
+qa_e0714710c90bba06540feb9e222ba1712e9adf57f99b950b112c10cb5e4cc194,dev,Tỉnh Đồng Tháp,76,phường Trung An,130,145,130,145,71,73, phường Trung An,True
+qa_34403836569fcf9ec8df6b244f086502d0c398af4ab6f33016a907faf8135e7c,dev,TP. Hồ Chí Minh,78,xã Bình Lợi,117,128,117,128,73,75, xã Bình Lợi,True
+qa_355b10b520aa28cea21b892e4d30517909e5774af0a4899d1f2389dac2cc9264,dev,Tỉnh Đồng Tháp,76,xã An Hòa,112,121,112,121,71,73, xã An Hòa,True
+qa_d517cd25f81c0fab1664411719ee3de87a2247b878a85cc583a5352ba060054b,dev,Tỉnh An Giang,78,phường Vĩnh Thông,134,151,134,151,73,75, phường Vĩnh Thông,True
+qa_44a6a2c0fbc9d9f7e777cb13f11545f594674d65b6f807409712c51cf89005c3,dev,Tỉnh An Giang,82,xã Châu Phú,131,142,131,142,77,79, xã Châu Phú,True
+qa_51adf192b70d407435f66680c4030c023099c4222e0a2cb80f5bdd64fc17542a,dev,Tỉnh An Giang,78,xã Vĩnh Hanh,115,127,115,127,72,75, xã Vĩnh Hanh,True
+qa_b1a2d296d2c33ba6ff3ee034c7059bfcf0f1a05c9bac09487d81496891eaafb0,dev,Tỉnh An Giang,75,phường Long Phú,133,148,133,148,70,72, phường Long Phú,True
+qa_718feff3316abc4795ea256af3a8ef1377b6695f2b21bac8c186a7d195c91056,dev,TP. Hồ Chí Minh,86,phường Gia Định,149,164,149,164,81,83, phường Gia Định,True
+qa_3f1aefd850be68bd27a0f43bc953ca81f1218ee81af1022358f7709a6ef705f4,dev,Thành phố Cần Thơ,87,xã Đông Phước,136,149,136,149,82,84, xã Đông Phước,True

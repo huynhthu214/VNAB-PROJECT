@@ -1,0 +1,23 @@
+[
+  {
+    "model": "rule_based",
+    "attempted": 5,
+    "api_success": 5,
+    "api_errors": 0,
+    "no_answer": 1
+  },
+  {
+    "model": "naive_rag",
+    "attempted": 5,
+    "api_success": 4,
+    "api_errors": 1,
+    "no_answer": 1
+  },
+  {
+    "model": "modular_rag",
+    "attempted": 5,
+    "api_success": 5,
+    "api_errors": 0,
+    "no_answer": 1
+  }
+]

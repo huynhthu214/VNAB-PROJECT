@@ -1,0 +1,44 @@
+{
+  "mode": "smoke",
+  "split": "dev",
+  "dataset_sha256": "e1317a5d27d85426f1e22a0efdb695aacd335a77d79ae9ddd918dd86fa6651ee",
+  "provider": "gemini",
+  "models": [
+    "rule_based",
+    "naive_rag",
+    "modular_rag"
+  ],
+  "api": "http://localhost:3000/api/v1",
+  "interval_seconds": 15.0,
+  "question_count": 5,
+  "expected_rows": 15,
+  "ids": [
+    "qa_b748cd4397a35f50e303b55b73fbb762cb8a983b3afff792b8f418161048c2c8",
+    "qa_0504cf3517618021407f754a786dfa2b2a64b8bd53af36437a9858bed0a2e0e5",
+    "qa_d1888c30d52e42447c3cd562ab252d770c4b581d56dc1ea9eb607b841ec36997",
+    "qa_1b3d822e0638cb31a4d5487d6b21ccdb58a441ce2a7c5a761fd3329591e9883b",
+    "qa_d9ef25e39780f9b781ecb629ff639219638cef31d3a10b35620e3b8c7a6301a8"
+  ],
+  "git_commit": "edd01fd30d0e1baff5b50bee38e85fabbe41769b",
+  "git_dirty": true,
+  "source_hashes": {
+    "backend/src/controllers/qa.controller.js": "f9d165eaff5426b1cc32f8d424c4e149f251491e2e844b4de911f74ea2d96a09",
+    "backend/src/services/llmProviders.js": "c113b0e4f6f8fed6d402467637d3be63f5521ecc9f5b8f4d090030fc51328176",
+    "backend/src/utils/lookupNormalize.js": "7222ec6f4fce0542881080ed1406b240b4785157b7a24a53d9288a869024906b",
+    "backend/package.json": "ecf8deb474fb801624ad4ff13ea2f91c7abb867185ebb22ef16806d5d02c56b3",
+    "backend/package-lock.json": "e01c67114785613f8cbd91cdb153ddf45effeddb40e740c4737629e4a1552661",
+    "embedding_service/requirements.txt": "924b140af4959e71b50031120484c9d56aa12168e18a7a54982197c33335849f"
+  },
+  "server_flags": "Record actual server startup settings separately; runner cannot verify them",
+  "scope_policy": "Use supplied province_code; omit for Ngoài phạm vi",
+  "timing": "Client wall time, sequential, no controlled warmup, no retry",
+  "runner_sha256": "0f97f6d071c15b160cf2621df5a6b042fb3edc84767c5fdeaab103cda91092b9",
+  "health": {
+    "success": true,
+    "data": {
+      "status": "ok",
+      "db": "connected"
+    },
+    "message": "OK"
+  }
+}
